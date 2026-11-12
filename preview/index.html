@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Инженерный Лицей НГТУ — Расписание и Виджет 2х2</title>
+  <script src="mock_data.js"></script>
+  <style>
+    :root {
+      --nika-header-start: #D7EBFA;
+      --nika-header-end: #EEEEEE;
+      --nika-bg: #F5F7FA;
+      --nika-border: #AACCEE;
+      --nika-lsn-num: #888888;
+      --nika-lsn-time: #008000;
+      --nika-subject: #222288;
+      --nika-teacher: #226666;
+      --nika-room: #111111;
+      --nika-group: #0000FF;
+      --nika-change: #DD2222;
+      --nika-cal-exists: #D7EBFA;
+      --nika-cal-change: #FFD4D7;
+      --nika-sat: #009900;
+      --nika-sun: #CC2222;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background: #1E293B; color: #1E293B; padding: 24px 16px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+
+    .main-title { color: #FFFFFF; font-size: 20px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+    .main-sub { color: #94A3B8; font-size: 13px; margin-bottom: 24px; text-align: center; max-width: 600px; }
+
+    .workspace-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      justify-content: center;
+      align-items: flex-start;
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    /* Phone Shell */
+    .device-shell {
+      width: 380px;
+      height: 780px;
+      background: #000000;
+      border-radius: 40px;
+      padding: 12px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 4px #334155;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .device-notch {
+      width: 120px;
+      height: 18px;
+      background: #000000;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+    }
+
+    .device-screen {
+      flex: 1;
+      background: var(--nika-bg);
+      border-radius: 30px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* App Header */
+    .app-header {
+      background: linear-gradient(var(--nika-header-start), var(--nika-header-end));
+      padding: 24px 14px 10px 14px;
+      border-bottom: 1px solid var(--nika-border);
+    }
+    .header-row { display: flex; justify-content: space-between; align-items: center; }
+    .school-title { font-size: 16px; font-weight: bold; color: var(--nika-subject); }
+    .school-city { font-size: 11px; color: #4A5568; }
+
+    .realtime-bar {
+      margin-top: 8px;
+      background: #EFEFEF;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #E2E8F0;
+    }
+    .bell-pill { font-weight: bold; color: var(--nika-lsn-time); }
+    .bell-pill.break { color: #AA281E; }
+
+    /* Subheader & Controls */
+    .control-bar {
+      background: #E8F1FA;
+      padding: 6px 10px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      border-bottom: 1px solid var(--nika-border);
+    }
+    .type-toggle {
+      display: flex;
+      background: #FFF;
+      border: 1px solid var(--nika-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .type-btn {
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    .type-btn.active {
+      background: var(--nika-subject);
+      color: #FFF;
+    }
+    .target-select {
+      flex: 1;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--nika-border);
+      background: #FFF;
+      font-size: 12px;
+      font-weight: bold;
+      color: #1E293B;
+      cursor: pointer;
+    }
+    .fav-btn {
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--nika-border);
+      background: #FFF;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .fav-btn.active { background: #FEF08A; border-color: #FACC15; }
+
+    /* Day Nav Bar */
+    .day-nav {
+      background: #E2EBF4;
+      border-bottom: 1px solid var(--nika-border);
+      padding: 4px 8px;
+    }
+    .day-nav-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--nika-subject);
+      padding-bottom: 4px;
+    }
+    .nav-arrow {
+      background: none;
+      border: none;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      color: var(--nika-subject);
+      padding: 2px 8px;
+    }
+    .day-pills { display: flex; justify-content: space-between; gap: 4px; }
+    .day-pill {
+      flex: 1;
+      text-align: center;
+      padding: 4px 0;
+      font-size: 11px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid #CBD5E1;
+      cursor: pointer;
+    }
+    .day-pill.active {
+      background: var(--nika-subject);
+      color: #FFF;
+      font-weight: bold;
+      border-color: var(--nika-subject);
+    }
+    .day-pill.today { border: 1.5px solid #8888CC; }
+
+    /* Lesson List */
+    .screen-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    .lesson-card {
+      background: #FFF;
+      border-radius: 8px;
+      border: 1px solid #E2E8F0;
+      padding: 6px 10px;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    .lesson-card.active-now {
+      background: #EBF8FF;
+      border: 2px solid #3B82F6;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+    }
+    .lsn-num { width: 32px; text-align: center; font-size: 16px; font-weight: bold; color: var(--nika-lsn-num); }
+    .lsn-time { width: 70px; font-size: 11px; font-weight: bold; color: var(--nika-lsn-time); }
+    .lsn-info { flex: 1; }
+    .lsn-subj { font-size: 13px; font-weight: 600; color: var(--nika-subject); }
+    .lsn-teacher { font-size: 11px; font-style: italic; color: var(--nika-teacher); }
+    .lsn-room {
+      background: #EBF3FC;
+      border: 1px solid #C4DBF6;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--nika-room);
+    }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      background: #FFF;
+      border-top: 1px solid var(--nika-border);
+      display: flex;
+      justify-content: space-around;
+      padding: 6px 0;
+    }
+    .nav-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 10px;
+      color: #64748B;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+    .nav-tab.active {
+      color: var(--nika-subject);
+      font-weight: bold;
+      background: #E2EBF4;
+    }
+
+    /* Desktop & 2x2 Widget Simulator */
+    .desktop-simulator {
+      width: 380px;
+      height: 780px;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="%231E3A8A"/><stop offset="100%" stop-color="%230F172A"/></linearGradient></defs><rect width="400" height="800" fill="url(%23g)"/></svg>');
+      border-radius: 40px;
+      padding: 20px 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 4px #334155;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .desktop-clock {
+      color: #FFF;
+      text-align: center;
+      margin-top: 30px;
+      margin-bottom: 24px;
+    }
+    .clock-time { font-size: 44px; font-weight: 200; }
+    .clock-date { font-size: 13px; color: #93C5FD; }
+
+    /* The 2x2 Widget Container */
+    .widget-2x2-card {
+      width: 172px;
+      height: 172px;
+      background: #FFFFFF;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #CBD5E1;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .widget-2x2-card:hover { transform: scale(1.02); }
+
+    .widget-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .widget-target-badge {
+      background: #D7EBFA;
+      color: var(--nika-subject);
+      font-size: 10px;
+      font-weight: bold;
+      border-radius: 6px;
+      padding: 2px 6px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .widget-bell-badge {
+      background: #DCFCE7;
+      color: #15803D;
+      font-size: 9px;
+      font-weight: bold;
+      border-radius: 6px;
+      padding: 2px 5px;
+    }
+    .widget-nav-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #E2E8F0;
+      padding-bottom: 3px;
+      margin-bottom: 4px;
+    }
+    .widget-day-btn {
+      background: #F1F5F9;
+      border: none;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      font-size: 10px;
+      line-height: 18px;
+      color: var(--nika-subject);
+    }
+    .widget-day-title {
+      font-size: 10px;
+      font-weight: bold;
+      color: var(--nika-subject);
+    }
+    .widget-lessons-list {
+      flex: 1;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .widget-lsn-row {
+      display: flex;
+      align-items: center;
+      font-size: 9.5px;
+      line-height: 1.1;
+    }
+    .w-num { width: 12px; color: #888; font-weight: bold; text-align: center; }
+    .w-time { width: 26px; color: var(--nika-lsn-time); font-size: 8px; }
+    .w-subj { flex: 1; font-weight: bold; color: var(--nika-subject); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .w-room { background: #EBF3FC; color: #111; font-weight: bold; padding: 1px 3px; border-radius: 3px; font-size: 8px; margin-left: 2px; }
+
+    /* Calendar Grid in App */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      background: #FFF;
+      padding: 6px;
+      border-bottom: 1px solid #CBD5E1;
+    }
+    .cal-header-cell { text-align: center; font-size: 11px; font-weight: bold; color: #475569; }
+    .cal-header-cell.sat { color: var(--nika-sat); }
+    .cal-header-cell.sun { color: var(--nika-sun); }
+    .cal-cell {
+      aspect-ratio: 1.1;
+      background: var(--nika-cal-exists);
+      border: 1px solid #BFDBFE;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .cal-cell.today { border: 2.5px solid #8888CC; font-weight: bold; }
+    .cal-cell.change { background: var(--nika-cal-change); }
+    .cal-cell.sun { color: var(--nika-sun); background: #FEE2E2; }
+    .cal-cell.sat { color: var(--nika-sat); background: #DCFCE7; }
+    .event-dot { width: 4px; height: 4px; background: #DC2626; border-radius: 50%; margin-top: 1px; }
+
+    /* Free Rooms Section */
+    .free-floors { display: flex; flex-direction: column; gap: 8px; }
+    .floor-card { background: #FFF; border-radius: 8px; border: 1px solid #E2E8F0; padding: 8px; }
+    .floor-title { font-size: 12px; font-weight: bold; color: var(--nika-subject); margin-bottom: 4px; }
+    .room-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .room-pill {
+      background: #DCFCE7;
+      border: 1px solid #86EFAC;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #15803D;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-title">Инженерный лицей НГТУ — Расписание и Виджет 2х2</div>
+  <div class="main-sub">Аутентичный стиль rasp (NIKA) • API info • Реалтайм синхронизация • Календарь • Архив 2 недели • Свободные кабинеты и учителя • Виджет 2х2 для рабочего стола</div>
+
+  <div class="workspace-container">
+
+    <!-- 1. ANDROID APP PHONE SIMULATOR -->
+    <div class="device-shell">
+      <div class="device-notch"></div>
+      <div class="device-screen">
+
+        <!-- Header -->
+        <div class="app-header">
+          <div class="header-row">
+            <div>
+              <div class="school-title">Инженерный лицей НГТУ</div>
+              <div class="school-city">г. Новосибирск • Официальное расписание</div>
+            </div>
+            <button onclick="refreshData()" style="background:none;border:none;font-size:18px;cursor:pointer;">🔄</button>
+          </div>
+          <div class="realtime-bar">
+            <span id="app-live-clock">Загрузка времени...</span>
+            <span id="app-bell-status" class="bell-pill">2 урок (до 09:55)</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Controls (for schedule tab) -->
+        <div id="schedule-controls" class="control-bar">
+          <div class="type-toggle">
+            <button id="type-class-btn" class="type-btn active" onclick="setTargetType('class')">Классы</button>
+            <button id="type-teacher-btn" class="type-btn" onclick="setTargetType('teacher')">Учителя</button>
+          </div>
+          <select id="target-select" class="target-select" onchange="onTargetSelectChange(this.value)">
+            <option value="10-1">10-1</option>
+          </select>
+          <button id="fav-btn" class="fav-btn" onclick="toggleFavorite()" title="Это мой класс / В избранное">★</button>
+        </div>
+
+        <!-- Day Selector (Пн..Сб) -->
+        <div id="day-nav-container" class="day-nav">
+          <div class="day-nav-top">
+            <button class="nav-arrow" onclick="changeDay(-1)">‹</button>
+            <span id="selected-day-label">Четверг, 13 ноября</span>
+            <button class="nav-arrow" onclick="changeDay(1)">›</button>
+          </div>
+          <div class="day-pills">
+            <div class="day-pill" onclick="selectDay(0)">Пн</div>
+            <div class="day-pill" onclick="selectDay(1)">Вт</div>
+            <div class="day-pill" onclick="selectDay(2)">Ср</div>
+            <div class="day-pill active today" onclick="selectDay(3)">Чт</div>
+            <div class="day-pill" onclick="selectDay(4)">Пт</div>
+            <div class="day-pill" onclick="selectDay(5)">Сб</div>
+          </div>
+        </div>
+
+        <!-- Screen Content Area -->
+        <div id="screen-body" class="screen-content">
+          <!-- Lessons loaded dynamically -->
+        </div>
+
+        <!-- Bottom Tabs -->
+        <div class="bottom-nav">
+          <button class="nav-tab active" onclick="switchTab(0)">
+            <span>📅</span>
+            <span>Расписание</span>
+          </button>
+          <button class="nav-tab" onclick="switchTab(1)">
+            <span>📆</span>
+            <span>Календарь</span>
+          </button>
+          <button class="nav-tab" onclick="switchTab(2)">
+            <span>🚪</span>
+            <span>Свободные</span>
+          </button>
+          <button class="nav-tab" onclick="switchTab(3)">
+            <span>📁</span>
+            <span>Архив</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 2. ANDROID DESKTOP & 2x2 WIDGET SIMULATOR -->
+    <div class="desktop-simulator">
+      <div class="device-notch"></div>
+
+      <!-- Desktop Clock -->
+      <div class="desktop-clock">
+        <div id="desktop-time" class="clock-time">12:45</div>
+        <div id="desktop-date" class="clock-date">Четверг, 13 ноября</div>
+      </div>
+
+      <!-- 2x2 Grid Area -->
+      <div style="display:flex; justify-content:center; align-items:center; margin-top:20px;">
+        <div class="widget-2x2-card" onclick="onWidgetClick()">
+          
+          <!-- Widget Top Header -->
+          <div class="widget-top-bar">
+            <div class="widget-target-badge" onclick="widgetToggleTarget(event)" title="Нажмите, чтобы переключить Класс/Учитель">
+              <span id="widget-target-text">Кл: 10-1</span>
+              <span>⇄</span>
+            </div>
+            <div id="widget-bell-text" class="widget-bell-badge">2 урок</div>
+          </div>
+
+          <!-- Widget Day Navigator -->
+          <div class="widget-nav-bar">
+            <button class="widget-day-btn" onclick="widgetChangeDay(-1, event)">‹</button>
+            <span id="widget-day-text" class="widget-day-title">Чт, 13 нояб.</span>
+            <button class="widget-day-btn" onclick="widgetChangeDay(1, event)">›</button>
+          </div>
+
+          <!-- Widget Lessons -->
+          <div id="widget-lessons" class="widget-lessons-list">
+            <!-- Compact rows populated dynamically -->
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Hint under widget -->
+      <div style="margin-top: 30px; text-align: center; color: #94A3B8; font-size: 11px; padding: 0 20px;">
+        Виджет 2х2 для рабочего стола Android.<br>
+        Поддерживает листание дней кнопками ‹ и › прямо с экрана блокировки/лаунчера и смену класса/учителя.
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // State
+    let currentTab = 0; // 0=schedule, 1=calendar, 2=free, 3=archive
+    let targetType = 'class'; // 'class' or 'teacher'
+    let targetName = '10-1';
+    let selectedDayIndex = 3; // 0=Mon, 3=Thu
+    let currentDayIndex = 3;
+    let selectedArchiveWeek = -1; // 0, -1, -2
+    let widgetDayOffset = 0;
+    let favoriteTarget = { type: 'class', name: '10-1' };
+    let adminPassword = 'licey2026';
+
+    const BELLS = [
+      { num: 1, start: '08:15', end: '09:00', startM: 495, endM: 540 },
+      { num: 2, start: '09:10', end: '09:55', startM: 550, endM: 595 },
+      { num: 3, start: '10:15', end: '11:00', startM: 615, endM: 660 },
+      { num: 4, start: '11:15', end: '12:00', startM: 675, endM: 720 },
+      { num: 5, start: '12:10', end: '12:55', startM: 730, endM: 775 },
+      { num: 6, start: '13:05', end: '13:50', startM: 785, endM: 830 },
+      { num: 7, start: '14:00', end: '14:40', startM: 840, endM: 880 },
+      { num: 8, start: '14:55', end: '15:35', startM: 895, endM: 935 }
+    ];
+
+    const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+
+    function getActiveSchedule(type, name, week = 0) {
+      if (!window.LYCEUM_CACHE || !window.LYCEUM_CACHE.schedules) return null;
+      return window.LYCEUM_CACHE.schedules[`${type}_${name}_${week}`] ||
+             window.LYCEUM_CACHE.schedules[`class_10-1_0`];
+    }
+
+    function init() {
+      // Populate select options
+      const sel = document.getElementById('target-select');
+      sel.innerHTML = '';
+      if (window.LYCEUM_CACHE) {
+        const list = targetType === 'class' ? window.LYCEUM_CACHE.classes.items : window.LYCEUM_CACHE.teachers.items;
+        list.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.name;
+          opt.textContent = item.name;
+          if (item.name === targetName) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      }
+
+      startRealtimeClock();
+      renderAll();
+    }
+
+    function startRealtimeClock() {
+      function tick() {
+        const now = new Date();
+        const curM = now.getHours() * 60 + now.getMinutes();
+        const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const shortTimeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+        document.getElementById('app-live-clock').textContent = `Чт, 13 нояб. • ${timeStr}`;
+        document.getElementById('desktop-time').textContent = shortTimeStr;
+
+        // Determine Bell
+        let bellText = 'Уроки завершены';
+        let isBreak = false;
+        for (let i = 0; i < BELLS.length; i++) {
+          const b = BELLS[i];
+          if (curM >= b.startM && curM < b.endM) {
+            bellText = `${b.num} урок (до ${b.end})`;
+            break;
+          }
+          if (i < BELLS.length - 1 && curM >= b.endM && curM < BELLS[i+1].startM) {
+            bellText = `Перемена до ${BELLS[i+1].num} урока`;
+            isBreak = true;
+            break;
+          }
+        }
+        const bp = document.getElementById('app-bell-status');
+        bp.textContent = bellText;
+        if (isBreak) bp.classList.add('break'); else bp.classList.remove('break');
+
+        document.getElementById('widget-bell-text').textContent = bellText.split(' ')[0] + ' ' + (bellText.split(' ')[1] || '');
+      }
+      tick();
+      setInterval(tick, 1000);
+    }
+
+    function renderAll() {
+      updateNavPills();
+      updateFavoriteBtn();
+      renderWidget();
+
+      const body = document.getElementById('screen-body');
+      if (currentTab === 0) {
+        renderScheduleTab(body);
+      } else if (currentTab === 1) {
+        renderCalendarTab(body);
+      } else if (currentTab === 2) {
+        renderFreeTab(body);
+      } else if (currentTab === 3) {
+        renderArchiveTab(body);
+      }
+    }
+
+    function switchTab(index) {
+      currentTab = index;
+      document.querySelectorAll('.nav-tab').forEach((tab, i) => {
+        if (i === index) tab.classList.add('active'); else tab.classList.remove('active');
+      });
+
+      document.getElementById('schedule-controls').style.display = (index === 0) ? 'flex' : 'none';
+      document.getElementById('day-nav-container').style.display = (index === 0) ? 'block' : 'none';
+
+      renderAll();
+    }
+
+    function setTargetType(type) {
+      targetType = type;
+      document.getElementById('type-class-btn').classList.toggle('active', type === 'class');
+      document.getElementById('type-teacher-btn').classList.toggle('active', type === 'teacher');
+      targetName = type === 'class' ? '10-1' : 'Муль П.Ф.';
+      init();
+    }
+
+    function onTargetSelectChange(val) {
+      targetName = val;
+      renderAll();
+    }
+
+    function selectDay(dayIdx) {
+      selectedDayIndex = dayIdx;
+      document.getElementById('selected-day-label').textContent = `${DAYS[dayIdx]}, 13 ноября`;
+      renderAll();
+    }
+
+    function changeDay(delta) {
+      selectedDayIndex = (selectedDayIndex + delta + 6) % 6;
+      selectDay(selectedDayIndex);
+    }
+
+    function updateNavPills() {
+      document.querySelectorAll('.day-pill').forEach((pill, i) => {
+        pill.classList.toggle('active', i === selectedDayIndex);
+      });
+    }
+
+    function toggleFavorite() {
+      if (favoriteTarget.type === targetType && favoriteTarget.name === targetName) {
+        favoriteTarget = { type: null, name: null };
+      } else {
+        favoriteTarget = { type: targetType, name: targetName };
+      }
+      updateFavoriteBtn();
+    }
+
+    function updateFavoriteBtn() {
+      const isFav = favoriteTarget.type === targetType && favoriteTarget.name === targetName;
+      const btn = document.getElementById('fav-btn');
+      btn.classList.toggle('active', isFav);
+      btn.textContent = isFav ? '★' : '☆';
+    }
+
+    // Schedule Tab Renderer
+    function renderScheduleTab(container) {
+      const schedule = getActiveSchedule(targetType, targetName, 0);
+      const dayData = schedule?.days?.find(d => d.dayIndex === selectedDayIndex);
+      const lessons = dayData?.lessons || [];
+
+      if (!lessons.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:#888;">В этот день уроков нет</div>';
+        return;
+      }
+
+      let html = '';
+      lessons.forEach(lsn => {
+        const sg = lsn.subgroups[0] || {};
+        const subject = sg.subject || '—';
+        const teacher = targetType === 'class' ? (sg.teacher || '') : ('Класс: ' + (sg.className || ''));
+        const room = sg.room ? `<span class="lsn-room">${sg.room}</span>` : '';
+        const isActive = (selectedDayIndex === currentDayIndex && lsn.num === 2); // e.g. Lesson 2 active
+
+        html += `
+          <div class="lesson-card ${isActive ? 'active-now' : ''}">
+            <div class="lsn-num">${lsn.num}</div>
+            <div class="lsn-time">${lsn.time}</div>
+            <div class="lsn-info">
+              <div class="lsn-subj">${subject}</div>
+              <div class="lsn-teacher">${teacher}</div>
+            </div>
+            ${room}
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    // Calendar Tab Renderer
+    function renderCalendarTab(container) {
+      const events = window.LYCEUM_CACHE?.events?.items || [];
+      let html = `
+        <div style="background:#E2EBF4;padding:6px;border-bottom:1px solid var(--nika-border);font-weight:bold;font-size:13px;color:var(--nika-subject);text-align:center;">
+          Ноябрь 2026
+        </div>
+        <div class="cal-grid">
+          <div class="cal-header-cell">Пн</div>
+          <div class="cal-header-cell">Вт</div>
+          <div class="cal-header-cell">Ср</div>
+          <div class="cal-header-cell">Чт</div>
+          <div class="cal-header-cell">Пт</div>
+          <div class="cal-header-cell sat">Сб</div>
+          <div class="cal-header-cell sun">Вс</div>
+      `;
+
+      // Draw November days (Nov 1 is Sunday => 6 empty cells)
+      for (let i = 0; i < 6; i++) {
+        html += `<div></div>`;
+      }
+      for (let d = 1; d <= 30; d++) {
+        const isToday = (d === 13);
+        const dayOfWeek = (d + 5) % 7; // 0=Mon, 5=Sat, 6=Sun
+        const isSat = (dayOfWeek === 5);
+        const isSun = (dayOfWeek === 6);
+        const hasChange = (d === 10 || d === 12);
+        const hasEvent = (d === 8 || d === 15 || d === 20);
+
+        html += `
+          <div class="cal-cell ${isToday ? 'today' : ''} ${hasChange ? 'change' : ''} ${isSat ? 'sat' : ''} ${isSun ? 'sun' : ''}" onclick="selectDayFromCal(${dayOfWeek})">
+            <span>${d}</span>
+            ${hasEvent ? '<div class="event-dot"></div>' : ''}
+          </div>
+        `;
+      }
+      html += `</div>`;
+
+      // Events list
+      html += `
+        <div style="padding:10px 4px 4px 4px;font-weight:bold;font-size:13px;color:var(--nika-subject);">События лицея</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+      `;
+
+      events.slice(0, 10).forEach(ev => {
+        html += `
+          <div style="background:#FFF;border:1px solid #E2E8F0;border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:8px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#D97706;"></div>
+            <div>
+              <div style="font-size:12px;font-weight:bold;color:#1E293B;">${ev.title}</div>
+              <div style="font-size:10px;color:#64748B;">${ev.date} ${ev.sourceLabel ? '• ' + ev.sourceLabel : ''}</div>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    function selectDayFromCal(dayIdx) {
+      if (dayIdx >= 0 && dayIdx <= 5) {
+        selectedDayIndex = dayIdx;
+        switchTab(0);
+      }
+    }
+
+    // Free Rooms & Teachers Renderer
+    function renderFreeTab(container) {
+      const freeRooms = ["101", "103", "105(Н)", "108", "116", "201", "204", "206", "208", "212", "302", "305", "308", "312", "Акт. зал"];
+      const busyRooms = [
+        { room: "211", info: "10-1: Физика" },
+        { room: "310", info: "10-2: Практикум по химии" },
+        { room: "113", info: "11-1: Алгебра" }
+      ];
+
+      container.innerHTML = `
+        <div style="background:#FFF7ED;border:1px solid #FDBA74;border-radius:8px;padding:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:11px;font-weight:bold;color:#9A3412;">Режим занятости кабинетов</div>
+            <div style="font-size:12px;color:#C2410C;">Слот: Четверг, 2 урок (9:10–9:55)</div>
+          </div>
+          <span class="badge" style="background:#DCFCE7;color:#15803D;">Свободно: 15</span>
+        </div>
+
+        <div class="floor-card">
+          <div class="floor-title">Свободные кабинеты (все этажи):</div>
+          <div class="room-pills">
+            ${freeRooms.map(r => `<span class="room-pill">${r}</span>`).join('')}
+          </div>
+        </div>
+
+        <div class="floor-card" style="margin-top:8px;">
+          <div class="floor-title">Занятые кабинеты в этот урок:</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${busyRooms.map(b => `
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px;">
+                <span class="badge" style="background:#FEE2E2;color:#991B1B;">${b.room}</span>
+                <span style="color:#334155;">${b.info}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div style="margin-top:12px;background:#F1F5F9;border-radius:8px;padding:8px;font-size:11px;color:#475569;">
+          🔐 <b>Пароль админа:</b> <code>${adminPassword}</code> (из OpenAPI docs).<br>
+          При отсутствии доступа сервер переключается на автоматический локальный расчёт матрицы занятости.
+        </div>
+      `;
+    }
+
+    // Archive Tab Renderer
+    function renderArchiveTab(container) {
+      const schedule = getActiveSchedule(targetType, targetName, selectedArchiveWeek);
+      const dayData = schedule?.days?.find(d => d.dayIndex === selectedDayIndex);
+      const lessons = dayData?.lessons || [];
+
+      container.innerHTML = `
+        <div style="background:#FFF7ED;border:1px solid #FDBA74;border-radius:8px;padding:8px;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:bold;color:#9A3412;">Архив расписания за прошлые недели</div>
+          <div style="font-size:12px;font-weight:bold;color:#C2410C;">
+            Период: ${schedule?.periodStart || '18.10.2026'} – ${schedule?.periodEnd || '25.10.2026'}
+          </div>
+          <div style="margin-top:6px;display:flex;gap:6px;">
+            <button onclick="setArchiveWeek(-1)" class="badge" style="border:none;cursor:pointer;background:${selectedArchiveWeek === -1 ? '#EA580C' : '#FFEDD5'};color:${selectedArchiveWeek === -1 ? '#FFF' : '#9A3412'};">1 нед. назад</button>
+            <button onclick="setArchiveWeek(-2)" class="badge" style="border:none;cursor:pointer;background:${selectedArchiveWeek === -2 ? '#EA580C' : '#FFEDD5'};color:${selectedArchiveWeek === -2 ? '#FFF' : '#9A3412'};">2 нед. назад</button>
+          </div>
+        </div>
+      `;
+
+      if (!lessons.length) {
+        container.innerHTML += '<div style="text-align:center;padding:30px;color:#888;">В архиве на этот день уроков нет</div>';
+        return;
+      }
+
+      lessons.forEach(lsn => {
+        const sg = lsn.subgroups[0] || {};
+        container.innerHTML += `
+          <div class="lesson-card">
+            <div class="lsn-num">${lsn.num}</div>
+            <div class="lsn-time">${lsn.time}</div>
+            <div class="lsn-info">
+              <div class="lsn-subj">${sg.subject || '—'}</div>
+              <div class="lsn-teacher">${targetType === 'class' ? (sg.teacher || '') : (sg.className || '')}</div>
+            </div>
+            ${sg.room ? `<span class="lsn-room">${sg.room}</span>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    function setArchiveWeek(w) {
+      selectedArchiveWeek = w;
+      renderAll();
+    }
+
+    // Widget 2x2 Logic
+    function renderWidget() {
+      const widgetDayIdx = (currentDayIndex + widgetDayOffset + 6) % 6;
+      document.getElementById('widget-target-text').textContent = (targetType === 'teacher' ? 'Уч: ' : 'Кл: ') + targetName;
+      document.getElementById('widget-day-text').textContent = `${DAYS[widgetDayIdx].slice(0, 2)}, ${10 + widgetDayIdx} нояб.`;
+
+      const schedule = getActiveSchedule(targetType, targetName, 0);
+      const dayData = schedule?.days?.find(d => d.dayIndex === widgetDayIdx);
+      const lessons = dayData?.lessons || [];
+
+      const list = document.getElementById('widget-lessons');
+      list.innerHTML = '';
+
+      if (!lessons.length) {
+        list.innerHTML = '<div style="font-size:9px;color:#888;text-align:center;padding-top:20px;">Нет занятий</div>';
+        return;
+      }
+
+      lessons.slice(0, 4).forEach(lsn => {
+        const sg = lsn.subgroups[0] || {};
+        const row = document.createElement('div');
+        row.className = 'widget-lsn-row';
+        row.innerHTML = `
+          <span class="w-num">${lsn.num}</span>
+          <span class="w-time">${lsn.time.split('–')[0]}</span>
+          <span class="w-subj">${sg.subject || '—'}</span>
+          ${sg.room ? `<span class="w-room">${sg.room}</span>` : ''}
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function widgetChangeDay(delta, e) {
+      e.stopPropagation();
+      widgetDayOffset += delta;
+      renderWidget();
+    }
+
+    function widgetToggleTarget(e) {
+      e.stopPropagation();
+      setTargetType(targetType === 'class' ? 'teacher' : 'class');
+    }
+
+    function onWidgetClick() {
+      // Sync main app to widget state and switch to schedule tab
+      selectedDayIndex = (currentDayIndex + widgetDayOffset + 6) % 6;
+      switchTab(0);
+    }
+
+    function refreshData() {
+      alert('Обновление расписания синхронизировано с https://lyceum.nstu.ru/info/api');
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
