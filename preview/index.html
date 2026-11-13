@@ -278,12 +278,12 @@
 
     /* The 2x2 Widget Container */
     .widget-2x2-card {
-      width: 172px;
-      height: 172px;
+      width: 180px;
+      height: 180px;
       background: #FFFFFF;
       border-radius: 20px;
       box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
-      padding: 10px;
+      padding: 10px 8px;
       display: flex;
       flex-direction: column;
       border: 1px solid #CBD5E1;
@@ -297,6 +297,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 4px;
+      padding: 0 2px;
     }
     .widget-target-badge {
       background: #D7EBFA;
@@ -323,7 +324,8 @@
       align-items: center;
       border-bottom: 1px solid #E2E8F0;
       padding-bottom: 3px;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
+      padding: 0 2px;
     }
     .widget-day-btn {
       background: #F1F5F9;
@@ -343,19 +345,28 @@
     }
     .widget-lessons-list {
       flex: 1;
-      overflow-y: hidden;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 2.5px;
+      padding-right: 2px;
+    }
+    .widget-lessons-list::-webkit-scrollbar {
+      width: 3px;
+    }
+    .widget-lessons-list::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 3px;
     }
     .widget-lsn-row {
       display: flex;
       align-items: center;
-      font-size: 9.5px;
+      font-size: 9px;
       line-height: 1.1;
+      padding: 1px 0;
     }
-    .w-num { width: 12px; color: #888; font-weight: bold; text-align: center; }
-    .w-time { width: 26px; color: var(--nika-lsn-time); font-size: 8px; }
+    .w-num { width: 13px; color: #888; font-weight: bold; text-align: center; }
+    .w-time { width: 28px; color: var(--nika-lsn-time); font-size: 8px; font-weight: 600; }
     .w-subj { flex: 1; font-weight: bold; color: var(--nika-subject); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .w-room { background: #EBF3FC; color: #111; font-weight: bold; padding: 1px 3px; border-radius: 3px; font-size: 8px; margin-left: 2px; }
 
@@ -912,7 +923,7 @@
         return;
       }
 
-      lessons.slice(0, 4).forEach(lsn => {
+      lessons.forEach(lsn => {
         const sg = lsn.subgroups[0] || {};
         const row = document.createElement('div');
         row.className = 'widget-lsn-row';
