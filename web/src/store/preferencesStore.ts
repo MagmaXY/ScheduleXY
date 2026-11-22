@@ -71,7 +71,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       copyIncludeNotes: false,
       useMagmaLogo: false,
       isMagmaUnlocked: false,
-      corsProxy: 'https://corsproxy.io/?',
+      corsProxy: 'https://lyceum-proxy.dimafilippov1800.workers.dev',
       notificationsEnabled: true,
 
       setTargetType: (type) => set({ targetType: type }),
