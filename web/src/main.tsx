@@ -3,7 +3,11 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { App } from './App';
 import { ThemeProvider } from './theme/ThemeProvider';
+import { yandexSyncService } from './services/yandexSync';
 import './index.css';
+
+// Intercept Yandex OAuth token from hash before React HashRouter attempts to parse it as a route
+yandexSyncService.handleAuthCallback();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -65,12 +65,13 @@ class YandexSyncService {
     if (!hash || !hash.includes('access_token=')) return false;
 
     try {
-      const params = new URLSearchParams(hash.replace(/^#\/?/, ''));
+      const cleanHash = hash.replace(/^#\/?/, '');
+      const params = new URLSearchParams(cleanHash);
       const token = params.get('access_token');
       if (token) {
         localStorage.setItem(YANDEX_TOKEN_KEY, token);
-        // Clean hash without reload
-        const cleanUrl = window.location.origin + window.location.pathname;
+        // Clean hash without reload and reset to home route
+        const cleanUrl = window.location.origin + window.location.pathname + '#/';
         window.history.replaceState(null, '', cleanUrl);
 
         // Fetch user info in background
