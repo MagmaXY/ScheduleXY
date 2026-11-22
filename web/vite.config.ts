@@ -25,8 +25,8 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['ic_lyceum_logo.png', 'ic_magma_logo.png', 'apple-touch-icon.png', 'icons/*.png'],
       manifest: {
-        name: 'Лицей НГТУ — Расписание',
-        short_name: 'ScheduleXY',
+        name: 'Инженерный лицей НГТУ',
+        short_name: 'Инженерный лицей НГТУ',
         description: 'Расписание занятий, звонков, заметки и свободные кабинеты Лицея НГТУ',
         theme_color: '#0F172A',
         background_color: '#0B0F17',
