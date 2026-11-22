@@ -128,25 +128,36 @@ class YandexSyncService {
       let remoteNotes: ScheduleNote[] = [];
       let fileExists = false;
 
-      const metaRes = await fetch(
-        `https://cloud-api.yandex.net/v1/disk/resources/download?path=${encodeURIComponent(
-          YANDEX_REMOTE_FILE
-        )}`,
-        {
-          headers: { Authorization: `OAuth ${token}` },
-        }
-      );
+      let metaRes: Response;
+      try {
+        metaRes = await fetch(
+          `https://cloud-api.yandex.net/v1/disk/resources/download?path=${encodeURIComponent(
+            YANDEX_REMOTE_FILE
+          )}`,
+          {
+            headers: { Authorization: `OAuth ${token}` },
+          }
+        );
+      } catch (networkErr: any) {
+        // If file does not exist yet on disk or network issues
+        console.warn('Yandex download check error', networkErr);
+        metaRes = new Response(null, { status: 404 });
+      }
 
       if (metaRes.ok) {
         const meta = await metaRes.json();
         if (meta.href) {
-          const downloadRes = await fetch(meta.href);
-          if (downloadRes.ok) {
-            const data = await downloadRes.json();
-            if (Array.isArray(data)) {
-              remoteNotes = data;
-              fileExists = true;
+          try {
+            const downloadRes = await fetch(meta.href);
+            if (downloadRes.ok) {
+              const data = await downloadRes.json();
+              if (Array.isArray(data)) {
+                remoteNotes = data;
+                fileExists = true;
+              }
             }
+          } catch {
+            // ignore download error if empty
           }
         }
       } else if (metaRes.status === 401) {

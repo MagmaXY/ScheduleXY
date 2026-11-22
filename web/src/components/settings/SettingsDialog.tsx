@@ -387,11 +387,9 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm('Выйти из Яндекс Диска? Локальные заметки сохранятся.')) {
-                            yandexSyncService.logout();
-                          }
+                          yandexSyncService.logout();
                         }}
-                        className="p-1.5 rounded-lg bg-[var(--md-surface)] border border-[var(--md-border)] text-red-500 hover:bg-red-500/10"
+                        className="p-1.5 rounded-lg bg-[var(--md-surface)] border border-[var(--md-border)] text-red-500 hover:bg-red-500/10 cursor-pointer"
                         title="Выйти"
                       >
                         <LogOut className="w-4 h-4" />
