@@ -19,4 +19,5 @@ export interface ScheduleNote {
   createdAt: number;
   updatedAt?: number;
   deleted?: boolean;
+  deletedAt?: number | null;
 }

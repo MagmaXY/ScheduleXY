@@ -193,8 +193,8 @@ class YandexSyncService {
         }
       }
 
-      // Filter out deleted notes
-      const finalNotes = Array.from(mergedMap.values()).filter((n) => !n.deleted);
+      // Filter out deleted notes (both deleted boolean or deletedAt timestamp)
+      const finalNotes = Array.from(mergedMap.values()).filter((n) => !n.deleted && !n.deletedAt);
 
       // 3. Save merged list locally
       await notesStore.setNotesDirectly(finalNotes);
