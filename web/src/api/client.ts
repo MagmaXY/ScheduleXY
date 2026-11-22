@@ -2,13 +2,16 @@
 // 1. In dev/preview environment (Vite): uses local /api-lyceum proxy (zero CORS issues!)
 // 2. In production (GitHub Pages): tries user configurable proxy or public CORS proxies
 
+// Dedicated Cloudflare Worker CORS proxy for Lyceum NSTU
+export const DEFAULT_PROXY_BASE = 'https://lyceum-proxy.dimafilippov1800.workers.dev';
+
 export interface ClientConfig {
   corsProxy: string;
   timeoutMs: number;
 }
 
 export const defaultClientConfig: ClientConfig = {
-  corsProxy: '', // Empty means direct or vite local proxy
+  corsProxy: '', // Empty means use default proxy
   timeoutMs: 15000,
 };
 
@@ -44,25 +47,13 @@ export async function fetchWithProxy<T>(
     urlsToTry.push(`/api-lyceum/${cleanEndpoint}`);
   }
 
-  // If user configured a custom CORS proxy
-  if (currentConfig.corsProxy) {
-    urlsToTry.push(
-      `${currentConfig.corsProxy}${encodeURIComponent(`https://lyceum.nstu.ru/info/api/${cleanEndpoint}`)}`
-    );
-  }
+  // 1. High-speed custom Cloudflare Worker proxy (no CORS issues, instant response)
+  const proxyBase = currentConfig.corsProxy || DEFAULT_PROXY_BASE;
+  const cleanBase = proxyBase.replace(/\/+$/, '');
+  urlsToTry.push(`${cleanBase}/${cleanEndpoint}`);
 
-  // 1. Direct Lyceum API (works when accessed directly or if server allows CORS)
+  // 2. Direct Lyceum API
   urlsToTry.push(`https://lyceum.nstu.ru/info/api/${cleanEndpoint}`);
-
-  // 2. High-speed open CORS proxy: AllOrigins (Cloudflare powered, tested working)
-  urlsToTry.push(
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://lyceum.nstu.ru/info/api/${cleanEndpoint}`)}`
-  );
-
-  // 3. Fallback proxy: CodeTabs
-  urlsToTry.push(
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://lyceum.nstu.ru/info/api/${cleanEndpoint}`)}`
-  );
 
   let lastError: unknown = null;
 
