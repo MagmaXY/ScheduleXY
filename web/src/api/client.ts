@@ -51,10 +51,15 @@ export async function fetchWithProxy<T>(
     );
   }
 
-  // Direct Lyceum API
+  // 1. Direct Lyceum API (works when accessed directly or if server allows CORS)
   urlsToTry.push(`https://lyceum.nstu.ru/info/api/${cleanEndpoint}`);
 
-  // Fallback public proxies (codetabs, thingproxy, etc)
+  // 2. High-speed open CORS proxy: AllOrigins (Cloudflare powered, tested working)
+  urlsToTry.push(
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://lyceum.nstu.ru/info/api/${cleanEndpoint}`)}`
+  );
+
+  // 3. Fallback proxy: CodeTabs
   urlsToTry.push(
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://lyceum.nstu.ru/info/api/${cleanEndpoint}`)}`
   );
