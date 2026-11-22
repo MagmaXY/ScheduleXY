@@ -1,32 +1,33 @@
 package ru.nstu.lyceum.schedule.domain
 
+import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
 
-class RealtimeSyncManager(private val scope: CoroutineScope) {
-
-    private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale("ru"))
-    private val dateFormat = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("ru"))
-    private val shortDateFormat = SimpleDateFormat("d MMMM", Locale("ru"))
+class RealtimeSyncManager(
+    private val scope: CoroutineScope,
+    private val context: Context? = null
+) {
 
     data class RealtimeState(
-        val timeString: String,
-        val dateString: String,
-        val shortDate: String,
         val dayIndex: Int,
-        val bellState: BellState,
-        val timestamp: Long
-    )
+        val bellState: BellState
+    ) {
+        val timeString: String get() = ""
+        val dateString: String get() = ""
+        val shortDate: String get() = ""
+        val timestamp: Long get() = 0L
+    }
 
+    private var syncJob: Job? = null
     private val _state = MutableStateFlow(computeCurrentState())
     val state: StateFlow<RealtimeState> = _state.asStateFlow()
 
@@ -34,31 +35,41 @@ class RealtimeSyncManager(private val scope: CoroutineScope) {
         startSyncLoop()
     }
 
-    private fun computeCurrentState(): RealtimeState {
+    fun computeCurrentState(): RealtimeState {
         val cal = Calendar.getInstance()
-        val bell = BellSchedule.getCurrentBellState(cal)
+        val isVacation = context?.let { VacationChecker.isVacation(it, cal) } ?: false
+        val prefs = context?.let { ru.nstu.lyceum.schedule.data.repository.PreferencesRepository(it) }
+        val isPairsMode = prefs?.statusBarPairsMode == true
+        val bell = if (isPairsMode) {
+            PairSchedule.getCurrentPairState(cal, isVacation)
+        } else {
+            BellSchedule.getCurrentBellState(cal, isVacation)
+        }
         val dayIdx = BellSchedule.getScheduleDayIndex(cal)
 
-        val dateCap = dateFormat.format(cal.time).replaceFirstChar {
-            if (it.isLowerCase()) it.titlecase(Locale("ru")) else it.toString()
-        }
-
         return RealtimeState(
-            timeString = timeFormat.format(cal.time),
-            dateString = dateCap,
-            shortDate = shortDateFormat.format(cal.time),
             dayIndex = dayIdx,
-            bellState = bell,
-            timestamp = cal.timeInMillis
+            bellState = bell
         )
     }
 
-    private fun startSyncLoop() {
-        scope.launch(Dispatchers.Default) {
+    fun forceRefresh() {
+        _state.value = computeCurrentState()
+    }
+
+    fun startSyncLoop() {
+        if (syncJob?.isActive == true) return
+        _state.value = computeCurrentState()
+        syncJob = scope.launch(Dispatchers.Default) {
             while (isActive) {
+                delay(15000) // update every 15 seconds (energy efficient, no battery drain)
                 _state.value = computeCurrentState()
-                delay(1000) // update every second for live countdown
             }
         }
+    }
+
+    fun stopSyncLoop() {
+        syncJob?.cancel()
+        syncJob = null
     }
 }

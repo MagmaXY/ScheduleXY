@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "ru.nstu.lyceum.schedule.app-mergeDebugResources-55:/values-night-v8/values-night-v8.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\user\\Documents\\GitHub\\ScheduleXY\\app\\src\\main\\res\\values-night\\themes.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "7",
+                        "endColumns": "12",
+                        "endOffsets": "389"
+                    }
+                }
+            ]
+        }
+    ]
+}

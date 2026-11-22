@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+    <!-- Sidebar and widget cards in secondary accent -->
+    <path
+        android:fillColor="#FF222288"
+        android:fillAlpha="0.40"
+        android:fillType="evenOdd"
+        android:pathData="M76.2,70.1 L76.5,98.3 L106.5,98.3 L106.5,70.1 Z M49.8,70.1 L50.0,98.3 L63.7,98.3 L63.7,70.1 Z M49.8,45.7 L49.8,57.6 L106.5,57.6 L106.5,45.7 Z M9.1,33.5 L9.3,106.2 L9.8,107.5 L11.4,109.3 L14.4,110.5 L33.2,110.5 L33.2,33.5 Z" />
+    <!-- Window frame, dividers and header bar in solid accent -->
+    <path
+        android:fillColor="#FF222288"
+        android:fillType="evenOdd"
+        android:pathData="M7.0,17.0 L5.8,19.0 L5.0,21.5 L5.0,106.2 L6.0,109.3 L8.8,112.6 L10.8,113.8 L13.4,114.6 L114.4,114.6 L117.4,113.6 L120.7,110.8 L122.0,108.8 L122.7,106.2 L122.7,21.5 L121.7,18.5 L118.9,15.2 L116.9,13.9 L114.4,13.1 L13.4,13.1 L10.3,14.2 Z M37.6,33.2 L118.9,33.5 L118.9,106.2 L117.9,108.2 L116.4,109.8 L114.4,110.8 L37.3,110.5 Z M72.4,67.1 L72.4,100.9 L73.4,102.1 L108.5,102.4 L109.5,102.1 L110.3,101.4 L110.5,67.6 L109.5,66.3 L73.7,66.0 Z M76.2,69.8 L106.7,70.1 L106.5,98.6 L76.2,98.3 Z M46.7,66.3 L45.7,67.6 L45.7,96.3 L46.2,101.6 L47.7,102.4 L66.8,102.1 L67.8,100.9 L67.6,67.1 L66.3,66.0 Z M49.8,69.8 L64.0,70.1 L63.7,98.6 L49.5,98.3 Z M45.7,43.1 L45.7,60.2 L47.2,61.7 L109.0,61.7 L110.5,60.2 L110.5,43.1 L109.0,41.6 L47.2,41.6 Z M49.8,45.4 L106.7,45.7 L106.5,57.9 L49.5,57.6 Z M9.1,33.2 L33.5,33.5 L33.2,110.8 L13.9,110.8 L11.6,109.8 L9.6,107.7 L8.8,105.7 Z" />
+</vector>

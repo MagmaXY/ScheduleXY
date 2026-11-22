@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Расписание НГТУ</string>
+    <string name="app_name">Инженерный лицей НГТУ</string>
     <string name="school_title">Инженерный лицей НГТУ</string>
     <string name="school_city">г. Новосибирск</string>
-    <string name="widget_name">Расписание 2х2</string>
+    <string name="widget_name">Расписание</string>
     <string name="tab_schedule">Расписание</string>
     <string name="tab_calendar">Календарь</string>
     <string name="tab_archive">Архив</string>
-    <string name="tab_free">Свободные</string>
+    <string name="tab_free">Кабинеты</string>
     <string name="tab_bells">Звонки</string>
     <string name="classes">Классы</string>
     <string name="teachers">Учителя</string>
@@ -22,5 +22,5 @@
     <string name="loading">Загрузка расписания...</string>
     <string name="offline_cached">Работа в офлайн режиме (кэш)</string>
     <string name="admin_password_title">Пароль администратора</string>
-    <string name="admin_password_hint">Введите пароль (по умолчанию licey2026)</string>
+    <string name="admin_password_hint">Введите пароль</string>
 </resources>

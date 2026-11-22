@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,8 +17,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,130 +31,161 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.nstu.lyceum.schedule.ui.theme.NikaBorder
-import ru.nstu.lyceum.schedule.ui.theme.NikaCalExists
-import ru.nstu.lyceum.schedule.ui.theme.NikaSaturday
-import ru.nstu.lyceum.schedule.ui.theme.NikaSubject
+import ru.nstu.lyceum.schedule.ui.theme.LyceumGreen
 
 @Composable
 fun DaySelector(
     selectedDayIndex: Int,
     currentDayIndex: Int,
-    onDaySelected: (Int) -> Unit
+    dateLabel: String? = null,
+    onDaySelected: (Int) -> Unit,
+    onDateClick: (() -> Unit)? = null
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     val dayNames = listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота")
     val shortDayNames = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб")
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFE2EBF4))
-            .border(width = 1.dp, color = NikaBorder)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
-        // Main Nav Bar with < Day >
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = {
-                    val prev = if (selectedDayIndex > 0) selectedDayIndex - 1 else 5
-                    onDaySelected(prev)
-                },
-                modifier = Modifier.size(36.dp)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Main Nav Bar with < Day >
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Предыдущий день",
-                    tint = NikaSubject
-                )
+                IconButton(
+                    onClick = {
+                        val prev = if (selectedDayIndex > 0) selectedDayIndex - 1 else 5
+                        onDaySelected(prev)
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Предыдущий день",
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = if (onDateClick != null) Modifier.clickable(onClick = onDateClick) else Modifier
+                ) {
+                    val baseDayName = dayNames.getOrElse(selectedDayIndex) { "Понедельник" }
+                    val resolvedDateLabel = if (!dateLabel.isNullOrBlank()) {
+                        dateLabel
+                    } else {
+                        try {
+                            val cal = java.util.Calendar.getInstance()
+                            val dayOfWeek = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+                            cal.add(java.util.Calendar.DAY_OF_MONTH, -dayOfWeek + selectedDayIndex)
+                            java.text.SimpleDateFormat("d MMMM", java.util.Locale("ru")).format(cal.time)
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    val title = if (!resolvedDateLabel.isNullOrBlank()) "$baseDayName, $resolvedDateLabel" else baseDayName
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.5.sp
+                        ),
+                        color = if (selectedDayIndex == 5) colorScheme.secondary else colorScheme.onSurface
+                    )
+
+                    if (selectedDayIndex == currentDayIndex) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(colorScheme.secondaryContainer)
+                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Сегодня",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                ),
+                                color = colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+
+                IconButton(
+                    onClick = {
+                        val next = if (selectedDayIndex < 5) selectedDayIndex + 1 else 0
+                        onDaySelected(next)
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Следующий день",
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = dayNames.getOrElse(selectedDayIndex) { "Понедельник" },
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (selectedDayIndex == 5) NikaSaturday else NikaSubject
-                )
-                if (selectedDayIndex == currentDayIndex) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .background(NikaCalExists, RoundedCornerShape(4.dp))
-                            .border(1.dp, Color(0xFF8888CC), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "Сегодня",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NikaSubject
-                        )
+            // Quick Day Selector (styled like bottom nav bar / segmented control)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                    .background(colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(10.dp))
+                    .padding(3.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    shortDayNames.forEachIndexed { index, name ->
+                        val isSelected = index == selectedDayIndex
+                        val isToday = index == currentDayIndex
+
+                        val textColor = when {
+                            isToday -> colorScheme.primary // Синий цвет сегодняшнего дня недели (всегда подсвечивается синим)
+                            isSelected -> colorScheme.onSurface // Выбранный день (например, завтрашний) — обычный активный цвет, без синей подсветки
+                            else -> colorScheme.onSurfaceVariant // Неактивный день недели
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onDaySelected(index) }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else (if (isToday) FontWeight.SemiBold else FontWeight.Normal),
+                                    fontSize = 12.sp
+                                ),
+                                color = textColor
+                            )
+                        }
                     }
                 }
             }
 
-            IconButton(
-                onClick = {
-                    val next = if (selectedDayIndex < 5) selectedDayIndex + 1 else 0
-                    onDaySelected(next)
-                },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Следующий день",
-                    tint = NikaSubject
-                )
-            }
-        }
-
-        // Quick Day Pills
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            shortDayNames.forEachIndexed { index, name ->
-                val isSelected = index == selectedDayIndex
-                val isToday = index == currentDayIndex
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(
-                            when {
-                                isSelected -> NikaSubject
-                                isToday -> NikaCalExists
-                                else -> Color.White.copy(alpha = 0.7f)
-                            }
-                        )
-                        .border(
-                            width = if (isToday && !isSelected) 1.5.dp else 1.dp,
-                            color = if (isToday && !isSelected) Color(0xFF8888CC) else Color(0xFFCBD5E1),
-                            shape = RoundedCornerShape(6.dp)
-                        )
-                        .clickable { onDaySelected(index) }
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = name,
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal,
-                        color = when {
-                            isSelected -> Color.White
-                            index == 5 -> NikaSaturday
-                            else -> Color(0xFF2D3748)
-                        }
-                    )
-                }
-            }
+            HorizontalDivider(
+                modifier = Modifier.fillMaxWidth(),
+                thickness = 0.5.dp,
+                color = colorScheme.outlineVariant
+            )
         }
     }
 }

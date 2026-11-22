@@ -1,36 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Authentic NIKA rasp colors from m.schedule.css -->
-    <color name="nika_header_start">#D7EBFA</color>
-    <color name="nika_header_end">#EEEEEE</color>
-    <color name="nika_time_bg">#EFEFEF</color>
-    <color name="nika_bg">#F4F7F9</color>
-    <color name="nika_surface">#FFFFFF</color>
-    <color name="nika_border">#AACCEE</color>
+    <!-- Lyceum Minimalist MD3 Palette: White, Gray, Black, Gold, Blue, Green -->
+    <color name="md3_white">#FFFFFF</color>
+    <color name="md3_slate_50">#F8FAFC</color>
+    <color name="md3_slate_100">#F1F5F9</color>
+    <color name="md3_slate_200">#E2E8F0</color>
+    <color name="md3_slate_300">#CBD5E1</color>
+    <color name="md3_slate_400">#94A3B8</color>
+    <color name="md3_slate_600">#475569</color>
+    <color name="md3_slate_800">#1E293B</color>
+    <color name="md3_slate_900">#0F172A</color>
 
-    <color name="nika_lsn_num">#888888</color>
-    <color name="nika_lsn_time">#008000</color>
-    <color name="nika_subject">#222288</color>
-    <color name="nika_teacher">#226666</color>
-    <color name="nika_room">#111111</color>
-    <color name="nika_group">#0000FF</color>
-    <color name="nika_change">#DD2222</color>
-    <color name="nika_cancel">#DD2222</color>
-    <color name="nika_time_accent">#AA281E</color>
+    <color name="lyceum_blue">#1D4ED8</color>
+    <color name="lyceum_blue_container">#DBEAFE</color>
+    <color name="lyceum_green">#059669</color>
+    <color name="lyceum_green_container">#D1FAE5</color>
+    <color name="lyceum_gold">#D97706</color>
+    <color name="lyceum_gold_container">#FEF3C7</color>
+    <color name="lyceum_red">#DC2626</color>
+    <color name="lyceum_red_container">#FEE2E2</color>
+
+    <!-- Legacy compatibility tokens mapped to MD3 -->
+    <color name="nika_header_start">#FFFFFF</color>
+    <color name="nika_header_end">#F8FAFC</color>
+    <color name="nika_time_bg">#F1F5F9</color>
+    <color name="nika_bg">#F8FAFC</color>
+    <color name="nika_surface">#FFFFFF</color>
+    <color name="nika_border">#CBD5E1</color>
+
+    <color name="nika_lsn_num">#94A3B8</color>
+    <color name="nika_lsn_time">#059669</color>
+    <color name="nika_subject">#1D4ED8</color>
+    <color name="nika_teacher">#475569</color>
+    <color name="nika_room">#0F172A</color>
+    <color name="nika_group">#1D4ED8</color>
+    <color name="nika_change">#DC2626</color>
+    <color name="nika_cancel">#94A3B8</color>
+    <color name="nika_cancel_bg">#F1F5F9</color>
+    <color name="nika_cancel_border">#E2E8F0</color>
+    <color name="nika_time_accent">#D97706</color>
 
     <!-- Calendar specific -->
-    <color name="nika_cal_exists">#D7EBFA</color>
-    <color name="nika_cal_today_border">#8888CC</color>
-    <color name="nika_cal_change">#FFD4D7</color>
-    <color name="nika_cal_method">#FECBA5</color>
-    <color name="nika_saturday">#009900</color>
-    <color name="nika_sunday">#CC2222</color>
+    <color name="nika_cal_exists">#EFF6FF</color>
+    <color name="nika_cal_today_border">#1D4ED8</color>
+    <color name="nika_cal_change">#FEF2F2</color>
+    <color name="nika_cal_method">#FFFBEB</color>
+    <color name="nika_saturday">#059669</color>
+    <color name="nika_sunday">#DC2626</color>
 
     <!-- Widget specific -->
-    <color name="widget_bg">#FDFDFE</color>
-    <color name="widget_header_bg">#D7EBFA</color>
+    <color name="widget_bg">#F8FAFC</color>
+    <color name="widget_header_bg">#DBEAFE</color>
     <color name="widget_card_bg">#FFFFFF</color>
-    <color name="widget_text_primary">#222288</color>
-    <color name="widget_text_secondary">#445566</color>
-    <color name="widget_badge_bg">#226666</color>
+    <color name="widget_text_primary">#1D4ED8</color>
+    <color name="widget_text_secondary">#475569</color>
+    <color name="widget_badge_bg">#059669</color>
 </resources>

@@ -49,8 +49,31 @@ object FreeAvailabilityEngine {
             val day = schedule.days.firstOrNull { it.dayIndex == dayIndex } ?: continue
             val lesson = day.lessons.firstOrNull { it.num == lessonNum } ?: continue
 
+            // Check if there is an active change for this class, day and lesson
+            val change = schedule.getChangeForLesson(dayIndex, lessonNum)
+            if (change != null) {
+                if (change.isCancelledLesson) {
+                    // Cancelled lesson - class is free, no room or teacher occupied
+                    continue
+                }
+                val repSubj = change.subject?.takeIf { it.isNotBlank() }?.let { ru.nstu.lyceum.schedule.data.api.normalizeSubject(it) } ?: "Занятие"
+                val repRoom = change.room?.trim()
+                val repTeacher = change.teacher?.trim()
+
+                if (!repRoom.isNullOrBlank()) {
+                    discoveredRooms.add(repRoom)
+                    val info = "$className: $repSubj (замена)"
+                    busyRooms[repRoom] = if (busyRooms.containsKey(repRoom)) "${busyRooms[repRoom]}, $info" else info
+                }
+                if (!repTeacher.isNullOrBlank()) {
+                    val info = "$className: $repSubj ${if (!repRoom.isNullOrBlank()) "($repRoom)" else ""} (замена)".trim()
+                    busyTeachers[repTeacher] = if (busyTeachers.containsKey(repTeacher)) "${busyTeachers[repTeacher]}, $info" else info
+                }
+                continue
+            }
+
             for (subgroup in lesson.subgroups) {
-                val subject = subgroup.subject ?: "Занятие"
+                val subject = subgroup.subject?.let { ru.nstu.lyceum.schedule.data.api.normalizeSubject(it) } ?: "Занятие"
                 val room = subgroup.room?.trim()
                 if (!room.isNullOrBlank()) {
                     discoveredRooms.add(room)
@@ -92,13 +115,13 @@ object FreeAvailabilityEngine {
         val days = listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота")
         val lessonTimes = mutableMapOf<String, String>()
 
-        for (num in 1..8) {
+        for (num in 1..12) {
             lessonTimes[num.toString()] = getLessonTime(num)
         }
 
         for (dIdx in 0..5) {
             val dName = days[dIdx]
-            for (num in 1..8) {
+            for (num in 1..12) {
                 val slot = computeSlotAvailability(allClassSchedules, emptyList(), dIdx, num)
                 val key = "$dName|$num"
                 roomsMap[key] = RoomSlotAvailability(
@@ -126,13 +149,13 @@ object FreeAvailabilityEngine {
         val days = listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота")
         val lessonTimes = mutableMapOf<String, String>()
 
-        for (num in 1..8) {
+        for (num in 1..12) {
             lessonTimes[num.toString()] = getLessonTime(num)
         }
 
         for (dIdx in 0..5) {
             val dName = days[dIdx]
-            for (num in 1..8) {
+            for (num in 1..12) {
                 val slot = computeSlotAvailability(allClassSchedules, allTeachers, dIdx, num)
                 val key = "$dName|$num"
                 teachersMap[key] = slot.freeTeachers
@@ -169,6 +192,10 @@ object FreeAvailabilityEngine {
             6 -> "13:05–13:50"
             7 -> "14:00–14:40"
             8 -> "14:55–15:35"
+            9 -> "15:50–16:30"
+            10 -> "16:40–17:20"
+            11 -> "17:30–18:10"
+            12 -> "18:20–19:00"
             else -> ""
         }
     }

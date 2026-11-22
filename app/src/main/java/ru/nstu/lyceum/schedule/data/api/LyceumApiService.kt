@@ -67,6 +67,13 @@ interface LyceumApiService {
             val client = OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(15, TimeUnit.SECONDS)
+                .addInterceptor { chain ->
+                    val request = chain.request().newBuilder()
+                        .header("Cache-Control", "no-cache, no-store")
+                        .header("Pragma", "no-cache")
+                        .build()
+                    chain.proceed(request)
+                }
                 .addInterceptor(logging)
                 .build()
 

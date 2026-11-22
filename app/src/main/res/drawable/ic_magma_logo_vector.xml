@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- AMOLED Black Circle -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M24,24m-24,0a24,24 0,1,1 48,0a24,24 0,1,1 -48,0" />
+    <!-- White MX Monogram -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9.77,9.00 L9.77,19.00 L16.68,24.07 L9.77,29.00 L9.77,39.00 L19.07,32.52 L19.21,25.76 L24.00,29.14 L28.79,25.90 L28.93,32.52 L38.08,39.00 L38.23,29.00 L31.18,24.07 L38.23,19.00 L38.08,9.14 L23.86,19.00 Z" />
+</vector>

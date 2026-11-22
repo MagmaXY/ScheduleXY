@@ -1,0 +1,345 @@
+import React, { useState, useEffect } from 'react';
+import { scheduleRepository } from '../api/scheduleRepository';
+import { usePreferencesStore } from '../store/preferencesStore';
+import { useScheduleStore } from '../store/scheduleStore';
+import {
+  SlotOccupancy,
+  computeSlotAvailability,
+} from '../domain/freeAvailabilityEngine';
+import { RealtimeState } from '../hooks/useRealtimeSync';
+import { Search, Check } from 'lucide-react';
+import { useSwipeGesture } from '../hooks/useSwipeGesture';
+
+interface Props {
+  realtimeState: RealtimeState;
+}
+
+export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
+  const adminPassword = usePreferencesStore((s) => s.adminPassword);
+  const teachersList = useScheduleStore((s) => s.teachersList);
+
+  const [selectedDay, setSelectedDay] = useState(
+    realtimeState.dayIndex < 6 ? realtimeState.dayIndex : 0
+  );
+  const [selectedLesson, setSelectedLesson] = useState(
+    realtimeState.bellState.type === 'in_lesson' ? realtimeState.bellState.num : 1
+  );
+
+  const [viewMode, setViewMode] = useState<'rooms' | 'teachers'>('rooms');
+  const [occupancy, setOccupancy] = useState<SlotOccupancy | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const isTeachersUnlocked = adminPassword === 'licey2026';
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const allClassSchedules = await scheduleRepository.prefetchAllClasses();
+        if (isCancelled) return;
+
+        const slot = computeSlotAvailability(
+          allClassSchedules,
+          teachersList,
+          selectedDay,
+          selectedLesson
+        );
+        setOccupancy(slot);
+      } catch {
+        // ignore
+      } finally {
+        if (!isCancelled) setIsLoading(false);
+      }
+    }
+
+    loadData();
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedDay, selectedLesson, teachersList]);
+
+  const freeRooms = occupancy?.freeRooms || [];
+  const busyRooms = Object.entries(occupancy?.busyRooms || {}).sort((a, b) =>
+    a[0].localeCompare(b[0], undefined, { numeric: true })
+  );
+
+  const freeTeachers = (occupancy?.freeTeachers || []).filter((t) =>
+    !search.trim() || t.toLowerCase().includes(search.toLowerCase().trim())
+  );
+
+  const busyTeachers = Object.entries(occupancy?.busyTeachers || {})
+    .filter(([t]) => !search.trim() || t.toLowerCase().includes(search.toLowerCase().trim()))
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Swipe gestures for touch and LMB mouse drag (cyclical 1..12)
+  const swipeHandlers = useSwipeGesture({
+    onSwipeLeft: () => {
+      setSelectedLesson((prev) => (prev < 12 ? prev + 1 : 1));
+    },
+    onSwipeRight: () => {
+      setSelectedLesson((prev) => (prev > 1 ? prev - 1 : 12));
+    },
+  });
+
+  // Arrow key & Digit hotkeys for lessons
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.key === 'ArrowRight') {
+        setSelectedLesson((prev) => (prev < 12 ? prev + 1 : 1));
+      } else if (e.key === 'ArrowLeft') {
+        setSelectedLesson((prev) => (prev > 1 ? prev - 1 : 12));
+      } else if (e.key >= '1' && e.key <= '9') {
+        setSelectedLesson(parseInt(e.key, 10));
+      } else if (e.key === '0') {
+        setSelectedLesson(10);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  return (
+    <div
+      {...swipeHandlers}
+      className="max-w-4xl mx-auto flex flex-col min-h-screen bg-[var(--md-background)] lg:border-x border-[var(--md-border-light)]"
+    >
+      {/* Mode Switcher: Rooms / Teachers (equal 50% width and stretched across full bar) */}
+      {isTeachersUnlocked && (
+        <div className="flex w-full px-3 py-1.5 bg-[var(--md-surface)] border-b border-[var(--md-border-light)]">
+          <div className="flex w-full gap-2">
+            <button
+              onClick={() => {
+                setViewMode('rooms');
+                setSearch('');
+              }}
+              className={`flex-1 h-8.5 rounded-xl text-xs sm:text-[13px] transition-all flex items-center justify-center ${
+                viewMode === 'rooms'
+                  ? 'text-[var(--md-text-primary)] font-bold'
+                  : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] font-medium'
+              }`}
+            >
+              Кабинеты
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('teachers');
+                setSearch('');
+              }}
+              className={`flex-1 h-8.5 rounded-xl text-xs sm:text-[13px] transition-all flex items-center justify-center ${
+                viewMode === 'teachers'
+                  ? 'text-[var(--md-text-primary)] font-bold'
+                  : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] font-medium'
+              }`}
+            >
+              Учителя
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Days Ribbon (Пн..Сб) */}
+      <div className="px-2 py-1.5 bg-[var(--md-surface)] border-b border-[var(--md-border-light)]">
+        <div data-no-swipe="true" className="flex items-center justify-between bg-[var(--md-surface-variant)]/60 rounded-xl p-1 gap-1">
+          {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((shortName, idx) => {
+            const isSelected = idx === selectedDay;
+            const isToday = idx === realtimeState.dayIndex;
+
+            const textColor = isToday
+              ? 'text-[var(--nika-subject)] font-bold'
+              : isSelected
+              ? 'text-[var(--md-text-primary)] font-bold'
+              : 'text-[var(--md-text-secondary)] font-normal';
+
+            return (
+              <button
+                key={shortName}
+                onClick={() => setSelectedDay(idx)}
+                className={`flex-1 py-1.5 text-center rounded-lg text-xs transition-all ${textColor} ${
+                  isSelected
+                    ? 'bg-[var(--md-surface)] shadow-sm'
+                    : 'hover:bg-[var(--md-surface)]/50'
+                }`}
+              >
+                {shortName}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 12 Lessons Ribbon without '#' */}
+      <div className="px-2 py-1.5 bg-[var(--md-surface)] border-b border-[var(--md-border-light)]">
+        <div data-no-swipe="true" className="flex items-center justify-between bg-[var(--md-surface-variant)]/60 rounded-xl p-1 gap-1">
+          {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => {
+            const isSelected = num === selectedLesson;
+            const isCurrent =
+              realtimeState.dayIndex === selectedDay &&
+              realtimeState.bellState.type === 'in_lesson' &&
+              realtimeState.bellState.num === num;
+
+            const textColor = isCurrent
+              ? 'text-[var(--nika-subject)] font-bold'
+              : isSelected
+              ? 'text-[var(--md-text-primary)] font-bold'
+              : 'text-[var(--md-text-secondary)] font-normal';
+
+            return (
+              <button
+                key={num}
+                onClick={() => setSelectedLesson(num)}
+                className={`flex-1 py-1.5 rounded-lg text-[12px] text-center transition-all ${textColor} ${
+                  isSelected
+                    ? 'bg-[var(--md-surface)] shadow-sm'
+                    : 'hover:bg-[var(--md-surface)]/50'
+                }`}
+              >
+                {num}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Search Input ONLY for Teachers (Room search removed as requested) */}
+      {viewMode === 'teachers' && (
+        <div className="p-2.5 bg-[var(--md-surface)] border-b border-[var(--md-border-light)]">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-[var(--md-text-muted)]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск свободного учителя..."
+              className="w-full pl-9 pr-3 py-1.5 bg-[var(--md-surface-variant)]/50 border border-[var(--md-border-light)] rounded-xl text-xs outline-none text-[var(--md-text-primary)] placeholder:text-[var(--md-text-muted)]"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 p-3 space-y-3">
+        {isLoading ? (
+          <div className="py-20 text-center">
+            <div className="w-8 h-8 border-2 border-[var(--nika-subject)] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-xs text-[var(--md-text-muted)]">
+              Анализ занятости 39 классов...
+            </p>
+          </div>
+        ) : viewMode === 'rooms' ? (
+          <div className="space-y-3">
+            {/* Separate counters: Free on the Left, Busy on the Right */}
+            <div className="flex items-center justify-between px-1 text-sm font-bold">
+              <span className="text-[var(--md-secondary)]">
+                Свободно: {freeRooms.length}
+              </span>
+              <span className="text-red-500 dark:text-red-400">
+                Занято: {busyRooms.length}
+              </span>
+            </div>
+
+            {/* Free Rooms Card - matching Android OutlinedCard with secondaryContainer & border */}
+            <div className="rounded-xl p-3 bg-[var(--md-secondary-container)]/35 border border-[var(--md-secondary)]/40">
+              <div className="text-xs font-bold text-[var(--md-secondary)] mb-1">
+                Свободные кабинеты:
+              </div>
+              <div className="text-[13px] font-semibold text-[var(--md-text-primary)] leading-relaxed">
+                {freeRooms.length === 0 ? (
+                  <span className="text-[var(--md-text-muted)] font-normal">Все кабинеты заняты</span>
+                ) : (
+                  freeRooms.join('  •  ')
+                )}
+              </div>
+            </div>
+
+            {/* Busy Rooms Header */}
+            <div className="text-xs font-bold text-red-500 dark:text-red-400 pt-1 px-1">
+              Занятые кабинеты:
+            </div>
+
+            {/* Busy Rooms Cards */}
+            <div className="space-y-1.5 pb-8">
+              {busyRooms.length === 0 ? (
+                <div className="text-xs text-[var(--md-text-muted)] p-2">Все кабинеты свободны</div>
+              ) : (
+                busyRooms.map(([room, occupancyText]) => (
+                  <div
+                    key={room}
+                    className="flex items-center px-3 py-2 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] shadow-xs"
+                  >
+                    <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-red-500/15 text-red-500 dark:text-red-400 mr-2.5 shrink-0">
+                      {room}
+                    </span>
+                    <span className="text-xs text-[var(--md-text-primary)] truncate">
+                      {occupancyText}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Separate counters for teachers: Free on the Left, Busy on the Right */}
+            <div className="flex items-center justify-between px-1 text-sm font-bold">
+              <span className="text-[var(--nika-subject)]">
+                Свободно учителей: {freeTeachers.length}
+              </span>
+              <span className="text-red-500 dark:text-red-400">
+                Занято: {busyTeachers.length}
+              </span>
+            </div>
+
+            {/* Free Teachers List */}
+            <div className="space-y-1.5">
+              {freeTeachers.length === 0 ? (
+                <div className="text-xs text-[var(--md-text-muted)] p-2">
+                  {search ? 'Учитель не найден' : 'В этот слот нет свободных учителей'}
+                </div>
+              ) : (
+                freeTeachers.map((teacher) => (
+                  <div
+                    key={teacher}
+                    className="flex items-center px-3 py-2 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] shadow-xs"
+                  >
+                    <Check className="w-4 h-4 text-[var(--nika-subject)] mr-2.5 shrink-0" />
+                    <span className="text-xs font-semibold text-[var(--md-text-primary)]">
+                      {teacher}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Busy Teachers Header */}
+            {busyTeachers.length > 0 && (
+              <>
+                <div className="text-xs font-bold text-red-500 dark:text-red-400 pt-1 px-1">
+                  Занятые учителя:
+                </div>
+                <div className="space-y-1.5 pb-8">
+                  {busyTeachers.map(([teacher, info]) => (
+                    <div
+                      key={teacher}
+                      className="flex flex-col px-3 py-2 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] shadow-xs"
+                    >
+                      <span className="text-xs font-bold text-[var(--md-text-primary)]">
+                        {teacher}
+                      </span>
+                      <span className="text-[11px] text-[var(--md-text-secondary)] mt-0.5">
+                        {info}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

@@ -8,9 +8,5 @@
 .externalNativeBuild
 .cxx
 local.properties
-node_modules/
-docx_dump.txt
-m_schedule.html
-m.schedule.css
-m.schedule.js
-nika_data_*.js
+.kotlin
+

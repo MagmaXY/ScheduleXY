@@ -1,0 +1,326 @@
+[
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_btn_bg_dark.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_btn_bg_dark.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_badge_bg_dark.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_badge_bg_dark.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_widget_copy.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_widget_copy.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_service_dashboard.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_service_dashboard.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_shortcut_archive.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_shortcut_archive.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_badge_bg.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_badge_bg.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/font_google_sans_medium.ttf.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/font/google_sans_medium.ttf"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_brand_telegram.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_brand_telegram.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_notification.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_notification.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_shortcut_notes.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_shortcut_notes.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xhdpi_ic_launcher_magma.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xhdpi/ic_launcher_magma.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_lyceum_logo.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_lyceum_logo.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_developer_avatar.jpg.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/developer_avatar.jpg"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_widget_group.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_widget_group.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_background_dark.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_background_dark.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-mdpi_ic_launcher_magma_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-mdpi/ic_launcher_magma_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_magma_logo_mono.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_magma_logo_mono.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_launcher_foreground_photo.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_launcher_foreground_photo.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_widget_person.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_widget_person.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_btn_bg.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_btn_bg.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_service_nika.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_service_nika.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_chevron_right.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_chevron_right.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_lyceum_logo_vector.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_lyceum_logo_vector.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-hdpi_ic_launcher_magma.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-hdpi/ic_launcher_magma.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_swap.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_swap.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/xml_schedule_widget_2x2_info.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/xml/schedule_widget_2x2_info.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-hdpi_ic_launcher_magma_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-hdpi/ic_launcher_magma_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_chevron_left.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_chevron_left.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_sysadmin_avatar.jpg.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/sysadmin_avatar.jpg"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-anydpi-v26_ic_launcher_magma_round.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-anydpi-v26/ic_launcher_magma_round.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_background_emerald.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_background_emerald.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/font_google_sans_regular.ttf.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/font/google_sans_regular.ttf"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/font_google_sans_bold.ttf.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/font/google_sans_bold.ttf"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_coat_of_arms_nso.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_coat_of_arms_nso.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/layout_widget_schedule_2x2.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/layout/widget_schedule_2x2.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_brand_github.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_brand_github.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_copy_content.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_copy_content.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_widget_arrow_back.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_widget_arrow_back.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_background_oled.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_background_oled.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_brand_max.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_brand_max.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_magma_logo.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_magma_logo.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_preview.jpg.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_preview.jpg"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_brand_vk.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_brand_vk.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xhdpi_ic_launcher_magma_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xhdpi/ic_launcher_magma_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/layout_widget_item_lesson.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/layout/widget_item_lesson.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_background_emerald_dark.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_background_emerald_dark.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_magma_logo_vector.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_magma_logo_vector.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-anydpi-v26_ic_launcher_magma.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-anydpi-v26/ic_launcher_magma.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_launcher_magma_background.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_launcher_magma_background.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_service_sdo.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_service_sdo.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_shortcut_calendar.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_shortcut_calendar.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-mdpi_ic_launcher_magma.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-mdpi/ic_launcher_magma.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_service_lyceum.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_service_lyceum.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xxhdpi_ic_launcher_magma.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xxhdpi/ic_launcher_magma.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_brand_youtube.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_brand_youtube.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xxhdpi_ic_launcher_magma_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xxhdpi/ic_launcher_magma_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_launcher_magma_foreground.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_launcher_magma_foreground.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_widget_background.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/widget_background.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_lyceum_logo_mono.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_lyceum_logo_mono.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_launcher_background.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_shortcut_schedule.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_shortcut_schedule.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_tile_lyceum.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_tile_lyceum.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xxxhdpi_ic_launcher_magma.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xxxhdpi/ic_launcher_magma.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_tile_magma.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_tile_magma.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_shortcut_rooms.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_shortcut_rooms.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_widget_arrow_forward.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_widget_arrow_forward.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xxxhdpi_ic_launcher_magma_round.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xxxhdpi/ic_launcher_magma_round.png"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_service_deepseek.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_service_deepseek.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_ic_notification_magma.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_notification_magma.xml"
+    },
+    {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/mipmap-xhdpi/ic_launcher.png"
+    }
+]

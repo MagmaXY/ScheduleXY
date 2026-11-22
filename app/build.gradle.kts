@@ -84,6 +84,12 @@ dependencies {
     // JSON serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
 
+    // WorkManager for background periodic sync
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Chrome Custom Tabs for OAuth
+    implementation("androidx.browser:browser:1.8.0")
+
     // UI Tools
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
