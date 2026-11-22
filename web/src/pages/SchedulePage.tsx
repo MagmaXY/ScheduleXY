@@ -6,6 +6,7 @@ import { LessonCard } from '../components/schedule/LessonCard';
 import { PairCard } from '../components/schedule/PairCard';
 import { NoteEditDialog } from '../components/notes/NoteEditDialog';
 import { useScheduleStore } from '../store/scheduleStore';
+import { toLocalDateIso, parseLocalDate } from '../utils/dateUtils';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { useNotesStore } from '../store/notesStore';
 import { RealtimeState } from '../hooks/useRealtimeSync';
@@ -60,50 +61,39 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
 
   // Formatted date label (e.g., "21 ноября")
   const getDateLabel = (): string => {
-    const cal = new Date();
     if (currentSchedule?.weekStart) {
-      const parts = currentSchedule.weekStart.split('-');
-      if (parts.length === 3) {
-        cal.setFullYear(parseInt(parts[0], 10));
-        cal.setMonth(parseInt(parts[1], 10) - 1);
-        cal.setDate(parseInt(parts[2], 10));
-        cal.setDate(cal.getDate() + selectedDayIndex);
-        return cal.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-      }
+      const d = parseLocalDate(currentSchedule.weekStart);
+      d.setDate(d.getDate() + selectedDayIndex);
+      return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
     }
-    const dayOfWeek = (cal.getDay() + 6) % 7;
-    cal.setDate(cal.getDate() - dayOfWeek + selectedDayIndex);
-    return cal.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    const now = new Date();
+    const dayOfWeek = (now.getDay() + 6) % 7;
+    now.setDate(now.getDate() - dayOfWeek + selectedDayIndex);
+    return now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
   };
 
   const getIsoDate = (): string => {
-    const cal = new Date();
     if (currentSchedule?.weekStart) {
-      const parts = currentSchedule.weekStart.split('-');
-      if (parts.length === 3) {
-        cal.setFullYear(parseInt(parts[0], 10));
-        cal.setMonth(parseInt(parts[1], 10) - 1);
-        cal.setDate(parseInt(parts[2], 10));
-        cal.setDate(cal.getDate() + selectedDayIndex);
-        return cal.toISOString().split('T')[0];
-      }
+      const d = parseLocalDate(currentSchedule.weekStart);
+      d.setDate(d.getDate() + selectedDayIndex);
+      return toLocalDateIso(d);
     }
+    const cal = new Date();
     const dayOfWeek = (cal.getDay() + 6) % 7;
     cal.setDate(cal.getDate() - dayOfWeek + selectedDayIndex);
-    return cal.toISOString().split('T')[0];
+    return toLocalDateIso(cal);
   };
 
   const currentDateIso = getIsoDate();
   const dateLabel = getDateLabel();
 
-  const todayIso = new Date().toISOString().split('T')[0];
+  const todayIso = toLocalDateIso();
   const isThisWeek = (() => {
     if (!currentSchedule?.weekStart) return true;
     const now = new Date();
     const dow = (now.getDay() + 6) % 7;
-    const mon = new Date(now);
-    mon.setDate(mon.getDate() - dow);
-    const curMondayIso = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, '0')}-${String(mon.getDate()).padStart(2, '0')}`;
+    now.setDate(now.getDate() - dow);
+    const curMondayIso = toLocalDateIso(now);
     return currentSchedule.weekStart === curMondayIso;
   })();
 

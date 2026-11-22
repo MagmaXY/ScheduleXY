@@ -7,6 +7,7 @@ import {
 } from '../types/api';
 import { ScheduleNote, SlotType } from '../types/notes';
 import { BELLS } from '../domain/bellSchedule';
+import { toLocalDateIso, parseLocalDate } from './dateUtils';
 
 /**
  * Checks if a slot on a given date is in the past.
@@ -16,7 +17,7 @@ export function isSlotInPast(
   slot: SlotType,
   lsnNum: number | null
 ): boolean {
-  const todayIso = new Date().toISOString().split('T')[0];
+  const todayIso = toLocalDateIso();
   if (selectedDateIso < todayIso) return true;
   if (selectedDateIso > todayIso) return false;
 
@@ -41,28 +42,15 @@ export function getDateIsoForDayIndex(
 ): string {
   if (weekStart && weekStart.trim()) {
     try {
-      const parts = weekStart.split('-');
-      if (parts.length === 3) {
-        const cal = new Date(
-          parseInt(parts[0], 10),
-          parseInt(parts[1], 10) - 1,
-          parseInt(parts[2], 10)
-        );
-        cal.setDate(cal.getDate() + dayIndex);
-        const y = cal.getFullYear();
-        const m = String(cal.getMonth() + 1).padStart(2, '0');
-        const d = String(cal.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      }
+      const cal = parseLocalDate(weekStart);
+      cal.setDate(cal.getDate() + dayIndex);
+      return toLocalDateIso(cal);
     } catch {}
   }
   const now = new Date();
   const dow = (now.getDay() + 6) % 7;
   now.setDate(now.getDate() - dow + dayIndex);
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return toLocalDateIso(now);
 }
 
 /**
@@ -287,21 +275,16 @@ export function findNextLessonInCurrentWeek(
   if (!normTarget) return null;
 
   try {
-    const parts = fromDateIso.split('-');
-    if (parts.length !== 3) return null;
-    const cal = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    const cal = parseLocalDate(fromDateIso);
     const fromDow = (cal.getDay() + 6) % 7;
     if (fromDow > 5) return null; // Sunday
 
-    const todayIso = new Date().toISOString().split('T')[0];
+    const todayIso = toLocalDateIso();
 
     for (let dow = fromDow; dow <= 5; dow++) {
       const checkCal = new Date(cal);
       checkCal.setDate(cal.getDate() + (dow - fromDow));
-      const y = checkCal.getFullYear();
-      const m = String(checkCal.getMonth() + 1).padStart(2, '0');
-      const d = String(checkCal.getDate()).padStart(2, '0');
-      const dateIso = `${y}-${m}-${d}`;
+      const dateIso = toLocalDateIso(checkCal);
 
       const daySchedule = schedule.days.find((it) => it.dayIndex === dow);
       if (!daySchedule) continue;
@@ -483,7 +466,7 @@ export function checkAndRelocateCancelledHomework(
   const target = schedule.className || schedule.teacherName;
   if (!target) return { updatedNotes: allNotes, relocatedInfo: [] };
 
-  const todayIso = new Date().toISOString().split('T')[0];
+  const todayIso = toLocalDateIso();
 
   const activeHwNotes = allNotes.filter(
     (n) =>

@@ -9,6 +9,7 @@ import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { searchNotes, searchEvents } from '../utils/smartSearch';
 import { NoteEditDialog } from '../components/notes/NoteEditDialog';
 import { ScheduleNote } from '../types/notes';
+import { toLocalDateIso, parseLocalDate } from '../utils/dateUtils';
 
 function formatArchiveWeekChip(isoMonday: string): string {
   try {
@@ -101,7 +102,7 @@ export const CalendarPage: React.FC = () => {
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
-  const todayIso = new Date().toISOString().split('T')[0];
+  const todayIso = toLocalDateIso();
 
   // Map of events by date
   const eventsByDate = new Map<string, typeof eventsList>();

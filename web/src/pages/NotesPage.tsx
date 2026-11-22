@@ -7,6 +7,7 @@ import { NoteEditDialog } from '../components/notes/NoteEditDialog';
 import { Plus, CheckCircle2, Circle, Trash2, Calendar, Clock } from 'lucide-react';
 import { ScheduleNote } from '../types/notes';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
+import { toLocalDateIso } from '../utils/dateUtils';
 import {
   findNextLessonInCurrentWeek,
   resolvePendingTransfers,
@@ -37,7 +38,7 @@ export const NotesPage: React.FC = () => {
   const [editingNote, setEditingNote] = useState<ScheduleNote | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const todayIso = new Date().toISOString().split('T')[0];
+  const todayIso = toLocalDateIso();
 
   // Target-filtered notes
   const targetNotes = notes.filter((n) => n.targetName === targetName);

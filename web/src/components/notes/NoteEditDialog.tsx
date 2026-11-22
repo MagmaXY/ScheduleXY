@@ -3,6 +3,7 @@ import { ScheduleNote, NoteType, SlotType } from '../../types/notes';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useScheduleStore } from '../../store/scheduleStore';
 import { normalizeSubject } from '../../types/api';
+import { toLocalDateIso, parseLocalDate } from '../../utils/dateUtils';
 import { BELLS } from '../../domain/bellSchedule';
 import {
   getSubjectForLessonOnDate,
@@ -32,7 +33,7 @@ interface Props {
 }
 
 function isSlotInPast(selectedDateIso: string, slot: SlotType, lsnNum: number | null): boolean {
-  const todayIso = new Date().toISOString().split('T')[0];
+  const todayIso = toLocalDateIso();
   if (selectedDateIso < todayIso) return true;
   if (selectedDateIso > todayIso) return false;
 
@@ -50,12 +51,9 @@ function isSlotInPast(selectedDateIso: string, slot: SlotType, lsnNum: number | 
 
 function formatRussianDateWithDay(iso: string): string {
   try {
-    const parts = iso.split('-');
-    if (parts.length === 3) {
-      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-      const str = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
-      return str.charAt(0).toUpperCase() + str.slice(1);
-    }
+    const d = parseLocalDate(iso);
+    const str = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+    return str.charAt(0).toUpperCase() + str.slice(1);
   } catch {}
   return iso;
 }
