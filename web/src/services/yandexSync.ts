@@ -200,28 +200,43 @@ class YandexSyncService {
       // 3. Save merged list locally
       await notesStore.setNotesDirectly(finalNotes);
 
-      // 4. Upload merged list to Yandex Disk
-      const uploadMetaRes = await fetch(
-        `https://cloud-api.yandex.net/v1/disk/resources/upload?path=${encodeURIComponent(
-          YANDEX_REMOTE_FILE
-        )}&overwrite=true`,
-        {
-          headers: { Authorization: `OAuth ${token}` },
-        }
-      );
+      // Only upload if local had newer or different data than remote
+      const remoteJson = JSON.stringify(remoteNotes);
+      const finalJson = JSON.stringify(finalNotes);
 
-      if (uploadMetaRes.ok) {
-        const uploadMeta = await uploadMetaRes.json();
-        if (uploadMeta.href) {
-          const proxyUploadUrl = `${WORKER_PROXY_URL}${encodeURIComponent(uploadMeta.href)}`;
-          const uploadRes = await fetch(proxyUploadUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(finalNotes, null, 2),
-          });
+      if (remoteJson !== finalJson) {
+        // Retry upload up to 3 times with exponential backoff if 423 LOCKED
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const uploadMetaRes = await fetch(
+            `https://cloud-api.yandex.net/v1/disk/resources/upload?path=${encodeURIComponent(
+              YANDEX_REMOTE_FILE
+            )}&overwrite=true`,
+            {
+              headers: { Authorization: `OAuth ${token}` },
+            }
+          );
 
-          if (!uploadRes.ok) {
-            throw new Error(`Ошибка загрузки на Яндекс Диск: ${uploadRes.status}`);
+          if (uploadMetaRes.status === 423) {
+            // Resource is temporarily locked by previous operation, wait 1.2s and retry
+            await new Promise((resolve) => setTimeout(resolve, 1200 * (attempt + 1)));
+            continue;
+          }
+
+          if (uploadMetaRes.ok) {
+            const uploadMeta = await uploadMetaRes.json();
+            if (uploadMeta.href) {
+              const proxyUploadUrl = `${WORKER_PROXY_URL}${encodeURIComponent(uploadMeta.href)}`;
+              const uploadRes = await fetch(proxyUploadUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: finalJson,
+              });
+
+              if (!uploadRes.ok) {
+                throw new Error(`Ошибка загрузки на Яндекс Диск: ${uploadRes.status}`);
+              }
+            }
+            break;
           }
         }
       }
