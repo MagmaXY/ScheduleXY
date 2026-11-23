@@ -141,6 +141,10 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleRoomClick = (room: string, lessonNum: number) => {
+    navigate(`/freerooms?day=${selectedDayIndex}&lesson=${lessonNum}&room=${encodeURIComponent(room)}`);
+  };
+
   const handleTeacherClassClick = (name: string) => {
     if (isTeacher) {
       setTargetType('class');
@@ -325,6 +329,7 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
                     userSubgroup={1}
                     userTechSubgroup={1}
                     onTeacherClassClick={handleTeacherClassClick}
+                    onRoomClick={handleRoomClick}
                     onClick={
                       !isTeacher
                         ? () => {
@@ -365,6 +370,7 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
                   notes={lessonNotes}
                   onToggleNoteCompleted={toggleCompleted}
                   onTeacherClassClick={handleTeacherClassClick}
+                  onRoomClick={handleRoomClick}
                   onClick={
                     !isTeacher
                       ? () => {

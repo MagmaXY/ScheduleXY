@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { lyceumApi } from '../api/endpoints';
 import { scheduleRepository } from '../api/scheduleRepository';
 import { usePreferencesStore } from '../store/preferencesStore';
@@ -16,15 +17,40 @@ interface Props {
 }
 
 export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
+  const [searchParams] = useSearchParams();
+  const dayParam = searchParams.get('day');
+  const lessonParam = searchParams.get('lesson');
+
   const adminPassword = usePreferencesStore((s) => s.adminPassword);
   const teachersList = useScheduleStore((s) => s.teachersList);
 
-  const [selectedDay, setSelectedDay] = useState(
-    realtimeState.dayIndex < 6 ? realtimeState.dayIndex : 0
-  );
-  const [selectedLesson, setSelectedLesson] = useState(
-    realtimeState.bellState.type === 'in_lesson' ? realtimeState.bellState.num : 1
-  );
+  const [selectedDay, setSelectedDay] = useState(() => {
+    if (dayParam !== null) {
+      const d = parseInt(dayParam, 10);
+      if (!isNaN(d) && d >= 0 && d <= 5) return d;
+    }
+    return realtimeState.dayIndex < 6 ? realtimeState.dayIndex : 0;
+  });
+
+  const [selectedLesson, setSelectedLesson] = useState(() => {
+    if (lessonParam !== null) {
+      const l = parseInt(lessonParam, 10);
+      if (!isNaN(l) && l >= 1 && l <= 12) return l;
+    }
+    return realtimeState.bellState.type === 'in_lesson' ? realtimeState.bellState.num : 1;
+  });
+
+  // If query parameters change dynamically, sync them
+  useEffect(() => {
+    if (dayParam !== null) {
+      const d = parseInt(dayParam, 10);
+      if (!isNaN(d) && d >= 0 && d <= 5) setSelectedDay(d);
+    }
+    if (lessonParam !== null) {
+      const l = parseInt(lessonParam, 10);
+      if (!isNaN(l) && l >= 1 && l <= 12) setSelectedLesson(l);
+    }
+  }, [dayParam, lessonParam]);
 
   const [viewMode, setViewMode] = useState<'rooms' | 'teachers'>('rooms');
   const [occupancy, setOccupancy] = useState<SlotOccupancy | null>(null);
