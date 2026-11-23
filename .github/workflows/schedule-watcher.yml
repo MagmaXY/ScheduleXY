@@ -56,11 +56,15 @@ jobs:
               contents: { en: message, ru: message }
             });
 
+            const authHeader = ONESIGNAL_API_KEY.startsWith('os_v2_') || ONESIGNAL_API_KEY.startsWith('Key ') || ONESIGNAL_API_KEY.startsWith('Basic ')
+              ? (ONESIGNAL_API_KEY.startsWith('os_v2_') ? `Key ${ONESIGNAL_API_KEY}` : ONESIGNAL_API_KEY)
+              : `Basic ${ONESIGNAL_API_KEY}`;
+
             const req = https.request('https://onesignal.com/api/v1/notifications', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Basic ${ONESIGNAL_API_KEY}`
+                'Authorization': authHeader
               }
             }, (res) => {
               console.log(`Push sent for ${className}: status ${res.statusCode}`);
