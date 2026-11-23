@@ -8,6 +8,13 @@ const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 const BASE_URL = 'https://lyceum.nstu.ru/info/api';
 const DATA_DIR = path.resolve(__dirname, '../web/public/data');
 
+const ALL_KNOWN_ROOMS = [
+  '101', '103', '105', '105(Н)', '108', '109', '110', '113', '116', '128',
+  '201', '202', '203', '204', '205', '206', '207', '208', '209', '210', '211', '212', '213', '214', '226', '230', '232',
+  '301', '302', '303', '304', '305', '306', '307', '308', '309', '310', '311', '312', '313', '314',
+  '1к404', '2к502', 'Акт. зал', 'Спортзал', 'Малый зал',
+];
+
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -70,11 +77,62 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Compute availability for slots
+function computeSlot(allClassSchedules, allTeachers, dayIndex, lessonNum) {
+  const busyRooms = {};
+  const busyTeachers = {};
+  const discoveredRooms = new Set(ALL_KNOWN_ROOMS);
+
+  for (const schedule of allClassSchedules) {
+    const className = schedule.className || '';
+    const day = schedule.days ? schedule.days.find(d => d.dayIndex === dayIndex) : null;
+    if (!day) continue;
+
+    const lesson = day.lessons ? day.lessons.find(l => l.num === lessonNum) : null;
+    if (!lesson) continue;
+
+    for (const sg of (lesson.subgroups || [])) {
+      const room = (sg.room || '').trim().replace(/^\(|\)$/g, '');
+      const teacher = (sg.teacher || '').trim();
+      const subject = (sg.subject || '').trim();
+      const desc = `${className}: ${subject}`;
+
+      if (room && room !== '-' && room.toLowerCase() !== 'дистант') {
+        discoveredRooms.add(room);
+        busyRooms[room] = desc;
+      }
+      if (teacher && teacher !== '-' && !teacher.startsWith('Физкультура')) {
+        busyTeachers[teacher] = desc;
+      }
+    }
+  }
+
+  const freeRooms = Array.from(discoveredRooms)
+    .filter(r => !busyRooms[r])
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+  const freeTeachers = allTeachers
+    .map(t => t.name)
+    .filter(t => !busyTeachers[t] && !t.startsWith('Физкультура'))
+    .sort((a, b) => a.localeCompare(b, 'ru'));
+
+  return {
+    dayIndex,
+    lessonNum,
+    freeRooms,
+    busyRooms,
+    freeTeachers,
+    busyTeachers
+  };
+}
+
 async function main() {
   ensureDir(DATA_DIR);
   ensureDir(path.join(DATA_DIR, 'class'));
   ensureDir(path.join(DATA_DIR, 'teacher'));
   ensureDir(path.join(DATA_DIR, 'archive'));
+  ensureDir(path.join(DATA_DIR, 'freerooms'));
+  ensureDir(path.join(DATA_DIR, 'freeteachers'));
 
   console.log('1. Fetching classes list...');
   let classes = [];
@@ -130,6 +188,7 @@ async function main() {
   }
   const newSnapshots = {};
   const changedClasses = [];
+  const allClassSchedules = [];
 
   console.log('5. Fetching schedules for classes (week 0)...');
   for (const c of classes) {
@@ -141,6 +200,7 @@ async function main() {
       const schedule = await fetchJson(`${BASE_URL}/schedule/class/${safeName}?week=0`);
       if (schedule) {
         fs.writeFileSync(targetFile, JSON.stringify(schedule));
+        allClassSchedules.push(schedule);
         
         // Compute diff hash / representation
         const changesStr = JSON.stringify(schedule.changes || {});
@@ -156,7 +216,7 @@ async function main() {
     } catch (err) {
       console.warn(`Failed to fetch class ${className}:`, err.message);
     }
-    await sleep(30);
+    await sleep(25);
   }
 
   console.log('6. Fetching schedules for teachers (week 0)...');
@@ -173,7 +233,40 @@ async function main() {
     } catch (err) {
       // Ignore individual teacher fails
     }
-    await sleep(30);
+    await sleep(25);
+  }
+
+  console.log('7. Pre-calculating free rooms & teachers availability table...');
+  const availabilityGrid = {};
+  for (let d = 0; d < 6; d++) {
+    for (let l = 1; l <= 12; l++) {
+      const slot = computeSlot(allClassSchedules, teachers, d, l);
+      availabilityGrid[`${d}_${l}`] = slot;
+    }
+  }
+  fs.writeFileSync(path.join(DATA_DIR, 'availability_grid.json'), JSON.stringify(availabilityGrid));
+  console.log('Precalculated availability grid saved.');
+
+  // Also prefetch archive schedules for weeks -1, -2, -3 for classes
+  console.log('8. Prefetching archive weeks (-1, -2, -3) for classes...');
+  for (let w = 1; w <= 3; w++) {
+    const weekParam = -w;
+    ensureDir(path.join(DATA_DIR, 'archive', `week_${weekParam}`));
+    for (const c of classes) {
+      const safeName = encodeURIComponent(c.name);
+      const targetFile = path.join(DATA_DIR, 'archive', `week_${weekParam}`, `${safeName}.json`);
+      if (!fs.existsSync(targetFile)) {
+        try {
+          const archSchedule = await fetchJson(`${BASE_URL}/schedule/class/${safeName}?week=${weekParam}`);
+          if (archSchedule) {
+            fs.writeFileSync(targetFile, JSON.stringify(archSchedule));
+          }
+        } catch (e) {
+          // ignore
+        }
+        await sleep(20);
+      }
+    }
   }
 
   // Save updated snapshots

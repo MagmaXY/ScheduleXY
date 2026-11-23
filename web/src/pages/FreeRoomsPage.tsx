@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { lyceumApi } from '../api/endpoints';
 import { scheduleRepository } from '../api/scheduleRepository';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { useScheduleStore } from '../store/scheduleStore';
@@ -32,12 +33,35 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
 
   const isTeachersUnlocked = adminPassword === 'licey2026';
 
+  const [cachedGrid, setCachedGrid] = useState<Record<string, SlotOccupancy> | null>(null);
+
   useEffect(() => {
     let isCancelled = false;
 
     async function loadData() {
       setIsLoading(true);
       try {
+        // Fast path: load pre-calculated availability table (instant < 20ms)
+        let grid = cachedGrid;
+        if (!grid) {
+          try {
+            grid = await lyceumApi.getAvailabilityGrid();
+            if (!isCancelled && grid) {
+              setCachedGrid(grid);
+            }
+          } catch {
+            // fallback to client-side compute
+          }
+        }
+
+        const slotKey = `${selectedDay}_${selectedLesson}`;
+        if (grid && grid[slotKey]) {
+          setOccupancy(grid[slotKey]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Fallback: calculate on client
         const allClassSchedules = await scheduleRepository.prefetchAllClasses();
         if (isCancelled) return;
 
@@ -59,7 +83,7 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
     return () => {
       isCancelled = true;
     };
-  }, [selectedDay, selectedLesson, teachersList]);
+  }, [selectedDay, selectedLesson, teachersList, cachedGrid]);
 
   const freeRooms = occupancy?.freeRooms || [];
   const busyRooms = Object.entries(occupancy?.busyRooms || {}).sort((a, b) =>

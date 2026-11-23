@@ -39,14 +39,8 @@ export async function fetchWithProxy<T>(
       window.location.hostname.startsWith('192.168.') ||
       window.location.hostname.startsWith('26.'));
 
-  // Priority URLs to try
-  const urlsToTry: string[] = [];
-
   // Helper to map API endpoint to static pre-built GitHub Pages cache
-  // e.g. schedule/classes -> data/classes.json
-  // schedule/class/10-1?week=0 -> data/class/10-1.json
   const getStaticCacheUrl = (ep: string): string | null => {
-    // Determine base public path
     const basePath = import.meta.env.BASE_URL || '/';
     const cleanBase = basePath.endsWith('/') ? basePath : `${basePath}/`;
 
@@ -62,23 +56,39 @@ export async function fetchWithProxy<T>(
     if (ep === 'schedule/archive') {
       return `${cleanBase}data/archive.json`;
     }
-    const classMatch = ep.match(/^schedule\/class\/([^?]+)(\?week=0)?$/);
-    if (classMatch) {
-      return `${cleanBase}data/class/${classMatch[1]}.json`;
+    if (ep === 'schedule/availability-grid') {
+      return `${cleanBase}data/availability_grid.json`;
     }
-    const teacherMatch = ep.match(/^schedule\/teacher\/([^?]+)(\?week=0)?$/);
+    const classMatch = ep.match(/^schedule\/class\/([^?]+)(?:\?week=([-\d]+))?$/);
+    if (classMatch) {
+      const clsName = classMatch[1];
+      const week = classMatch[2] || '0';
+      if (week === '0') {
+        return `${cleanBase}data/class/${clsName}.json`;
+      }
+      if (['-1', '-2', '-3'].includes(week)) {
+        return `${cleanBase}data/archive/week_${week}/${clsName}.json`;
+      }
+    }
+    const teacherMatch = ep.match(/^schedule\/teacher\/([^?]+)(?:\?week=([-\d]+))?$/);
     if (teacherMatch) {
-      return `${cleanBase}data/teacher/${teacherMatch[1]}.json`;
+      const tchName = teacherMatch[1];
+      const week = teacherMatch[2] || '0';
+      if (week === '0') {
+        return `${cleanBase}data/teacher/${tchName}.json`;
+      }
     }
     return null;
   };
 
   const staticCacheUrl = getStaticCacheUrl(cleanEndpoint);
 
-  // 1. If static cache is available and we are on production / not localhost,
-  // try the instant GitHub Pages static cache first!
-  // It has zero CORS, works in RU without VPN, and loads in < 50ms.
-  if (staticCacheUrl && !isLocalhost && options.method !== 'POST') {
+  // Priority URLs to try
+  const urlsToTry: string[] = [];
+
+  // 1. If static pre-built cache is available, ALWAYS try it first (both on production and localhost)!
+  // It has zero CORS, works in RU without VPN, and loads in < 20ms.
+  if (staticCacheUrl && options.method !== 'POST') {
     urlsToTry.push(staticCacheUrl);
   }
 
@@ -87,13 +97,14 @@ export async function fetchWithProxy<T>(
     urlsToTry.push(`/api-lyceum/${cleanEndpoint}`);
   }
 
-  // 2. High-speed custom Cloudflare Worker proxy (live data / fallback / week!=0)
+  // 2. High-speed custom Cloudflare Worker proxy via /proxy-url (live data / fallback)
   const proxyBase = currentConfig.corsProxy || DEFAULT_PROXY_BASE;
   const cleanBase = proxyBase.replace(/\/+$/, '');
-  urlsToTry.push(`${cleanBase}/${cleanEndpoint}`);
+  const targetLyceumUrl = `https://lyceum.nstu.ru/info/api/${cleanEndpoint}`;
+  urlsToTry.push(`${cleanBase}/proxy-url?url=${encodeURIComponent(targetLyceumUrl)}`);
 
   // 3. Direct Lyceum API
-  urlsToTry.push(`https://lyceum.nstu.ru/info/api/${cleanEndpoint}`);
+  urlsToTry.push(targetLyceumUrl);
 
   // 4. If static cache wasn't prioritized, add as final fallback
   if (staticCacheUrl && !urlsToTry.includes(staticCacheUrl) && options.method !== 'POST') {

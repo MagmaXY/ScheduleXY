@@ -8,6 +8,7 @@ import {
   ScheduleResponse,
   TeachersResponse,
 } from '../types/api';
+import { SlotOccupancy } from '../domain/freeAvailabilityEngine';
 import { fetchWithProxy } from './client';
 
 export const lyceumApi = {
@@ -45,6 +46,10 @@ export const lyceumApi = {
 
   getArchiveWeeks: (): Promise<ArchiveResponse> => {
     return fetchWithProxy<ArchiveResponse>('schedule/archive');
+  },
+
+  getAvailabilityGrid: (): Promise<Record<string, SlotOccupancy>> => {
+    return fetchWithProxy<Record<string, SlotOccupancy>>('schedule/availability-grid');
   },
 
   getEvents: (): Promise<EventsResponse> => {
