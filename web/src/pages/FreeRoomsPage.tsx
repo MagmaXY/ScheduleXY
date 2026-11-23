@@ -350,7 +350,7 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
                       key={teacher}
                       className="flex flex-col px-3 py-2 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] shadow-xs"
                     >
-                      <span className="text-xs font-bold text-[var(--md-text-primary)]">
+                      <span className="text-xs font-bold text-red-500 dark:text-red-400">
                         {teacher}
                       </span>
                       <span className="text-[11px] text-[var(--md-text-secondary)] mt-0.5">
