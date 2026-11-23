@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { usePreferencesStore, ThemePreset } from '../../store/preferencesStore';
 import { useNotesStore } from '../../store/notesStore';
-import { X, FileDown, FileUp, RefreshCw, Cloud, LogOut } from 'lucide-react';
+import { X, FileDown, FileUp, RefreshCw, Cloud, LogOut, Bell, BellOff } from 'lucide-react';
 import { yandexSyncService, YandexUserState } from '../../services/yandexSync';
+import { notificationService } from '../../services/notificationService';
 
 interface Props {
   onClose: () => void;
@@ -63,6 +64,21 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
   const [yandexState, setYandexState] = useState<YandexUserState>(() =>
     yandexSyncService.getState()
   );
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() =>
+    notificationService.getPermissionStatus()
+  );
+
+  const handleToggleNotifications = async () => {
+    if (notificationPermission === 'granted') {
+      alert('Уведомления уже включены. Чтобы отключить их, измените разрешение в настройках браузера или сайта.');
+      return;
+    }
+    const granted = await notificationService.requestPermission();
+    setNotificationPermission(notificationService.getPermissionStatus());
+    if (granted) {
+      notificationService.updateUserTags(targetType, targetName);
+    }
+  };
 
   useEffect(() => {
     return yandexSyncService.subscribe(() => {
@@ -468,6 +484,45 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
                   />
                 </label>
               </div>
+            </div>
+          </div>
+
+          {/* Section: Notifications */}
+          <div className="pt-2 border-t border-[var(--md-border-light)]">
+            <h4 className="font-bold text-xs text-[var(--md-text-muted)] mb-2 flex items-center gap-1.5">
+              <Bell className="w-3.5 h-3.5" />
+              <span>Push-уведомления</span>
+            </h4>
+            <div className="p-3 rounded-2xl bg-[var(--md-surface-variant)]/50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-[var(--md-text-primary)]">
+                  Уведомления об изменениях расписания
+                </span>
+                <button
+                  type="button"
+                  onClick={handleToggleNotifications}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    notificationPermission === 'granted'
+                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                      : 'bg-[var(--nika-subject)] text-[var(--md-on-primary)] shadow-sm'
+                  }`}
+                >
+                  {notificationPermission === 'granted' ? (
+                    <>
+                      <Bell className="w-3 h-3" />
+                      <span>Включены</span>
+                    </>
+                  ) : (
+                    <>
+                      <BellOff className="w-3 h-3" />
+                      <span>Включить</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="text-[10px] text-[var(--md-text-muted)] leading-relaxed">
+                Приходят при публикации нового расписания или замен для вашего класса / преподавателя ({targetName || 'не выбран'}).
+              </p>
             </div>
           </div>
 

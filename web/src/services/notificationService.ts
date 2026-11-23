@@ -8,8 +8,9 @@ declare global {
 }
 
 const ONESIGNAL_APP_ID_KEY = 'lyceum_onesignal_app_id';
-// Default App ID can be put here or set via settings
-export const DEFAULT_ONESIGNAL_APP_ID = '';
+// Default App ID configured in OneSignal dashboard
+export const DEFAULT_ONESIGNAL_APP_ID = '23229097-58ee-4682-9aa2-1c11414d2ea3';
+export const DEFAULT_SAFARI_WEB_ID = 'web.onesignal.auto.147da6f8-95e8-4f3e-9e77-8dc52e1c58f0';
 
 export interface OneSignalState {
   isSupported: boolean;
@@ -34,6 +35,9 @@ class NotificationService {
     window.OneSignalDeferred.push(async (OneSignal: any) => {
       await OneSignal.init({
         appId: activeAppId,
+        safari_web_id: DEFAULT_SAFARI_WEB_ID,
+        serviceWorkerParam: { scope: '/ScheduleXY/' },
+        serviceWorkerPath: 'OneSignalSDKWorker.js',
         notifyButton: { enable: false },
         allowLocalhostAsSecureOrigin: true,
       });
