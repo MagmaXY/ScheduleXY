@@ -2,8 +2,8 @@ name: Check Lyceum Schedule Changes & Update Cache
 
 on:
   schedule:
-    # Run every 30 minutes from 06:00 to 20:00 MSK (03:00 to 17:00 UTC) on Monday-Saturday
-    - cron: '*/30 3-17 * * 1-6'
+    # Run every 5 minutes (maximum frequency supported by GitHub Actions) 24/7
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
