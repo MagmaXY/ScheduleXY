@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -110,16 +112,17 @@ fun NoteEditDialog(
 
     var subjectText by remember {
         val initialSubj = initialNote?.subject ?: defaultSubject ?: if (scheduleResponse != null) {
-            NotesTimeHelper.getEffectiveLessonSubject(
+            val eff = NotesTimeHelper.getEffectiveLessonSubject(
                 schedule = scheduleResponse,
                 dateIso = selectedDateIso,
                 lessonNum = selectedLessonNum,
                 userSubgroup = userSubgroup,
                 userTechSubgroup = userTechSubgroup,
                 isMiddleSchool = isMiddleSchool
-            ) ?: ""
+            )
+            eff?.let { normalizeSubject(it) } ?: ""
         } else {
-            availableLessons.firstOrNull { it.first == selectedLessonNum }?.second ?: ""
+            availableLessons.firstOrNull { it.first == selectedLessonNum }?.second?.let { normalizeSubject(it) } ?: ""
         }
         mutableStateOf(initialSubj)
     }
@@ -459,7 +462,7 @@ fun NoteEditDialog(
                                             selectedLessonNum = nextUpcoming
                                             val match = availableLessons.firstOrNull { it.first == nextUpcoming }
                                             if (match != null && match.second.isNotBlank()) {
-                                                subjectText = match.second
+                                                subjectText = normalizeSubject(match.second)
                                             }
                                         }
                                     }
@@ -526,7 +529,7 @@ fun NoteEditDialog(
                                             match?.second
                                         }
                                         if (!eff.isNullOrBlank()) {
-                                            subjectText = eff
+                                            subjectText = normalizeSubject(eff)
                                         }
                                     }
                             ) {
@@ -560,6 +563,7 @@ fun NoteEditDialog(
                             value = subjectText,
                             onValueChange = { subjectText = it },
                             modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                             placeholder = { Text("Название предмета...", style = MaterialTheme.typography.bodyMedium, color = colorScheme.outline) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = colorScheme.onSurface,

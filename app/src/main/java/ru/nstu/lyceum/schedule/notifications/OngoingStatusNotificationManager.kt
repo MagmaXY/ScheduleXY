@@ -118,6 +118,100 @@ object OngoingStatusNotificationManager {
         val userSubgroup = prefs.studentSubgroup
         val userTechSubgroup = prefs.studentTechnologySubgroup
 
+        // Helper to extract effective subject and room for a single lesson accounting for replacements and cancellations
+        fun getEffectiveLessonInfo(lesson: ru.nstu.lyceum.schedule.data.api.Lesson): Pair<String, String>? {
+            val changes = cachedSchedule?.getChangesForLesson(dayIdx, lesson.num) ?: emptyList()
+
+            // Check total cancellation
+            val isTotalCancelled = when {
+                changes.isEmpty() -> false
+                lesson.subgroups.isEmpty() -> changes.any { it.isCancelledLesson }
+                lesson.subgroups.size <= 1 -> changes.any { it.isCancelledLesson }
+                else -> {
+                    val hasGeneralCancel = changes.any {
+                        it.isCancelledLesson && it.group.isNullOrBlank() && it.subgroup.isNullOrBlank() && it.label.isNullOrBlank()
+                    }
+                    if (hasGeneralCancel) true
+                    else {
+                        lesson.subgroups.all { sg ->
+                            val c = ru.nstu.lyceum.schedule.ui.components.findChangeForSubgroup(sg, changes, lesson.subgroups)
+                            c?.isCancelledLesson == true
+                        }
+                    }
+                }
+            }
+            if (isTotalCancelled) {
+                return Pair("Урок отменен", "")
+            }
+
+            val isTech = lesson.subgroups.any {
+                it.subject?.contains("технолог", ignoreCase = true) == true
+            } && isMiddleSchool
+            val targetGroup = if (isTech) userTechSubgroup else userSubgroup
+
+            val userSg = if (lesson.subgroups.size > 1) {
+                lesson.subgroups.firstOrNull { sg ->
+                    val digit = sg.label?.filter { it.isDigit() }?.toIntOrNull()
+                    digit == targetGroup
+                } ?: lesson.subgroups.firstOrNull()
+            } else {
+                lesson.subgroups.firstOrNull()
+            }
+
+            if (userSg != null) {
+                val sgChange = ru.nstu.lyceum.schedule.ui.components.findChangeForSubgroup(userSg, changes, lesson.subgroups)
+                if (sgChange != null) {
+                    if (sgChange.isCancelledLesson) {
+                        return Pair("Урок отменен", "")
+                    }
+                    val subj = if (!sgChange.subject.isNullOrBlank() && sgChange.subject != "F" && sgChange.subject != "$" && !sgChange.subject.startsWith("$")) {
+                        ru.nstu.lyceum.schedule.data.api.normalizeSubject(sgChange.subject)
+                    } else {
+                        ru.nstu.lyceum.schedule.data.api.normalizeSubject(userSg.subject)
+                    }
+                    val room = if (!sgChange.room.isNullOrBlank()) {
+                        sgChange.room.trim().removePrefix("(").removeSuffix(")")
+                    } else {
+                        userSg.room?.trim()?.removePrefix("(")?.removeSuffix(")") ?: ""
+                    }
+                    return Pair(subj.ifEmpty { "Урок" }, room)
+                }
+
+                val subj = ru.nstu.lyceum.schedule.data.api.normalizeSubject(userSg.subject).ifEmpty { "Урок" }
+                val room = userSg.room?.trim()?.removePrefix("(")?.removeSuffix(")") ?: ""
+                return Pair(subj, room)
+            }
+
+            // Fallback for lessons without subgroups
+            val rep = changes.firstOrNull { !it.isCancelledLesson }
+            val subj = rep?.subject?.takeIf { it.isNotBlank() && it != "F" && it != "$" && !it.startsWith("$") }
+                ?: lesson.displaySubject
+            val room = rep?.room?.takeIf { it.isNotBlank() } ?: lesson.displayRoom
+            return Pair(
+                ru.nstu.lyceum.schedule.data.api.normalizeSubject(subj).ifEmpty { "Урок" },
+                room.trim().removePrefix("(").removeSuffix(")")
+            )
+        }
+
+        fun getUiItemInfo(item: ScheduleItemUi): Pair<String, String>? {
+            return when (item) {
+                is ScheduleItemUi.SingleLesson -> getEffectiveLessonInfo(item.lesson)
+                is ScheduleItemUi.CombinedPair -> {
+                    // For pairs, if during first lesson, show first; if during second or break, show appropriate
+                    val firstInfo = getEffectiveLessonInfo(item.firstLesson)
+                    val secondInfo = getEffectiveLessonInfo(item.secondLesson)
+                    val curLsnNum = when (bellState) {
+                        is BellState.InLesson -> if (isPairsMode) {
+                            if (curTotalMinutes >= 90) item.secondLesson.num else item.firstLesson.num
+                        } else bellState.num
+                        else -> item.firstLesson.num
+                    }
+                    if (curLsnNum == item.secondLesson.num && secondInfo != null) secondInfo else firstInfo
+                }
+                else -> null
+            }
+        }
+
         // Filter by user's subgroup
         val filteredLessons = dayLessons.filter { lsn ->
             val isTech = lsn.subgroups.any { it.subject?.lowercase()?.contains("технолог") == true }
@@ -158,16 +252,9 @@ object OngoingStatusNotificationManager {
         when (bellState) {
             is BellState.BeforeSchool -> {
                 val firstItem = processedItems.firstOrNull()
-                val lsnName = when (firstItem) {
-                    is ScheduleItemUi.SingleLesson -> firstItem.lesson.displaySubject
-                    is ScheduleItemUi.CombinedPair -> firstItem.firstLesson.displaySubject
-                    else -> "Урок"
-                }
-                val lsnRoom = when (firstItem) {
-                    is ScheduleItemUi.SingleLesson -> firstItem.lesson.displayRoom
-                    is ScheduleItemUi.CombinedPair -> firstItem.firstLesson.displayRoom
-                    else -> ""
-                }
+                val info = firstItem?.let { getUiItemInfo(it) }
+                val lsnName = info?.first ?: "Урок"
+                val lsnRoom = info?.second ?: ""
                 val roomStr = if (lsnRoom.isNotBlank()) " • каб. $lsnRoom" else ""
                 val prefix = if (isPairsMode) "До 1 пары" else "До 1 урока"
 
@@ -186,16 +273,9 @@ object OngoingStatusNotificationManager {
                     }
                 }
 
-                val lsnName = when (activeItem) {
-                    is ScheduleItemUi.SingleLesson -> activeItem.lesson.displaySubject
-                    is ScheduleItemUi.CombinedPair -> activeItem.firstLesson.displaySubject
-                    else -> if (isPairsMode) "Пара" else "Урок"
-                }
-                val lsnRoom = when (activeItem) {
-                    is ScheduleItemUi.SingleLesson -> activeItem.lesson.displayRoom
-                    is ScheduleItemUi.CombinedPair -> activeItem.firstLesson.displayRoom
-                    else -> ""
-                }
+                val info = activeItem?.let { getUiItemInfo(it) }
+                val lsnName = info?.first ?: if (isPairsMode) "Пара" else "Урок"
+                val lsnRoom = info?.second ?: ""
                 val roomStr = if (lsnRoom.isNotBlank()) " • каб. $lsnRoom" else ""
                 val label = if (isPairsMode) "$num пара" else "$num урок"
 
@@ -215,16 +295,9 @@ object OngoingStatusNotificationManager {
                     }
                 }
 
-                val lsnName = when (nextItem) {
-                    is ScheduleItemUi.SingleLesson -> nextItem.lesson.displaySubject
-                    is ScheduleItemUi.CombinedPair -> nextItem.firstLesson.displaySubject
-                    else -> null
-                }
-                val lsnRoom = when (nextItem) {
-                    is ScheduleItemUi.SingleLesson -> nextItem.lesson.displayRoom
-                    is ScheduleItemUi.CombinedPair -> nextItem.firstLesson.displayRoom
-                    else -> null
-                }
+                val info = nextItem?.let { getUiItemInfo(it) }
+                val lsnName = info?.first
+                val lsnRoom = info?.second
 
                 val nextInfo = if (!lsnName.isNullOrBlank()) {
                     val roomStr = if (!lsnRoom.isNullOrBlank()) " • каб. $lsnRoom" else ""
