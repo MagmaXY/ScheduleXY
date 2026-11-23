@@ -159,7 +159,7 @@ class YandexDiskSyncService(
                         // Compare updatedAt
                         val cloudUpdated = cloud.updatedAt
                         val localUpdated = local.updatedAt
-                        if (cloudUpdated > localUpdated) {
+                        if (cloudUpdated >= localUpdated) {
                             mergedMap[cloud.id] = cloud
                         }
                     }
@@ -176,7 +176,7 @@ class YandexDiskSyncService(
                 val now = System.currentTimeMillis()
                 preferencesRepository.yandexLastSyncTime = now
 
-                val result = SyncResult.Success("Синхронизировано успешно (${mergedList.count { it.deletedAt == null }} заметок)")
+                val result = SyncResult.Success("Синхронизировано успешно (${mergedList.count { !it.isDeleted }} заметок)")
                 _syncState.value = result
                 result
             } catch (e: Exception) {

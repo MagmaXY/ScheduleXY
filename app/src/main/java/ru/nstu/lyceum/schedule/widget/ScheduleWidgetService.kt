@@ -82,7 +82,7 @@ class ScheduleRemoteViewsFactory(private val context: Context) : RemoteViewsServ
                 val json = notesFile.readText()
                 val type = object : com.google.gson.reflect.TypeToken<List<ru.nstu.lyceum.schedule.data.local.ScheduleNote>>() {}.type
                 val list = com.google.gson.Gson().fromJson<List<ru.nstu.lyceum.schedule.data.local.ScheduleNote>>(json, type) ?: emptyList()
-                list.filter { it.targetName == targetName && it.date == targetDateIso }
+                list.filter { it.targetName == targetName && it.date == targetDateIso && !it.isDeleted }
             } else emptyList()
         } catch (_: Exception) {
             emptyList()
@@ -658,9 +658,6 @@ private fun evaluateWidgetSubgroupChange(
             Pair(false, true)
         }
     } else {
-        if (changes.isNotEmpty() && allSubgroups.size > 1) {
-            return Pair(true, false)
-        }
         return Pair(false, false)
     }
 }
@@ -685,15 +682,31 @@ private fun renderSubgroup(
     classColor: Int,
     timePrefix: String = ""
 ) {
+    val normSgSubj = sg.subject?.let { ru.nstu.lyceum.schedule.data.api.normalizeSubject(it).lowercase().trim() } ?: ""
+    val normChangeSubj = sgChange?.subject?.let { ru.nstu.lyceum.schedule.data.api.normalizeSubject(it).lowercase().trim() } ?: ""
+    val isSubjectChanged = !isCancelled && sgChange != null && normChangeSubj.isNotEmpty() && normSgSubj != normChangeSubj
+
+    val normSgTeacher = sg.teacher?.lowercase()?.trim() ?: ""
+    val normChangeTeacher = sgChange?.teacher?.lowercase()?.trim() ?: ""
+    val isTeacherChanged = !isCancelled && sgChange != null && normChangeTeacher.isNotEmpty() && normSgTeacher != normChangeTeacher
+
+    val normSgRoom = sg.room?.trim()?.removePrefix("(")?.removeSuffix(")")?.lowercase() ?: ""
+    val normChangeRoom = sgChange?.room?.trim()?.removePrefix("(")?.removeSuffix(")")?.lowercase() ?: ""
+    val isRoomChanged = !isCancelled && sgChange != null && normChangeRoom.isNotEmpty() && normSgRoom != normChangeRoom
+
+    val normSgClass = sg.className?.trim()?.lowercase() ?: ""
+    val normChangeClass = sgChange?.className?.trim()?.lowercase() ?: ""
+    val isClassChanged = !isCancelled && sgChange != null && normChangeClass.isNotEmpty() && normSgClass != normChangeClass
+
     val rawSubj = when {
-        isReplaced && !sgChange?.subject.isNullOrBlank() -> sgChange!!.subject!!
+        !sgChange?.subject.isNullOrBlank() && (isReplaced || isSubjectChanged) -> sgChange!!.subject!!
         else -> sg.subject ?: lessonDefaultSubj
     }
     val displaySubj = timePrefix + ru.nstu.lyceum.schedule.data.api.normalizeSubject(rawSubj)
 
     val currentSubjColor = when {
         isCancelled -> cancelColor
-        isReplaced -> changeColor
+        isSubjectChanged -> changeColor
         else -> subjColor
     }
 
@@ -708,12 +721,16 @@ private fun renderSubgroup(
 
     // Room on the right of the subject (wrap_content, never truncated)
     val displayRoom = when {
-        isReplaced && !sgChange?.room.isNullOrBlank() -> sgChange!!.room!!
+        !sgChange?.room.isNullOrBlank() -> sgChange!!.room!!
         else -> sg.room ?: ""
     }
     val roomStr = formatWidgetRoom(displayRoom)
     if (roomStr.isNotBlank()) {
-        val currentRoomColor = if (isCancelled) cancelColor else if (isReplaced) changeColor else roomColor
+        val currentRoomColor = when {
+            isCancelled -> cancelColor
+            isRoomChanged -> changeColor
+            else -> roomColor
+        }
         if (isCancelled) {
             val spanRoom = SpannableString(roomStr)
             spanRoom.setSpan(StrikethroughSpan(), 0, spanRoom.length, 0)
@@ -729,17 +746,18 @@ private fun renderSubgroup(
 
     // Subline formatting: Teacher / Class + Group (without room, full horizontal width)
     val displayTeacher = when {
-        isReplaced && !sgChange?.teacher.isNullOrBlank() -> sgChange!!.teacher!!
+        !sgChange?.teacher.isNullOrBlank() -> sgChange!!.teacher!!
         else -> sg.teacher ?: ""
     }
     val displayClass = when {
-        isReplaced && !sgChange?.className.isNullOrBlank() -> sgChange!!.className!!
+        !sgChange?.className.isNullOrBlank() -> sgChange!!.className!!
         else -> sg.className ?: ""
     }
     val groupStr = formatWidgetGroup(sg.label)
 
     val sb = SpannableStringBuilder()
     val mainWho = if (isTeacherMode) displayClass else displayTeacher
+    val isWhoChanged = if (isTeacherMode) isClassChanged else isTeacherChanged
 
     if (mainWho.isNotBlank()) {
         val start = sb.length
@@ -748,7 +766,7 @@ private fun renderSubgroup(
         if (isCancelled) {
             sb.setSpan(ForegroundColorSpan(cancelColor), start, end, 0)
             sb.setSpan(StrikethroughSpan(), start, end, 0)
-        } else if (isReplaced) {
+        } else if (isWhoChanged) {
             sb.setSpan(ForegroundColorSpan(changeColor), start, end, 0)
             if (isTeacherMode) {
                 sb.setSpan(StyleSpan(Typeface.BOLD), start, end, 0)
@@ -756,7 +774,7 @@ private fun renderSubgroup(
                 sb.setSpan(StyleSpan(Typeface.ITALIC), start, end, 0)
             }
         } else {
-            sb.setSpan(ForegroundColorSpan(teacherColor), start, end, 0)
+            sb.setSpan(ForegroundColorSpan(if (isTeacherMode) classColor else teacherColor), start, end, 0)
             if (isTeacherMode) {
                 sb.setSpan(StyleSpan(Typeface.BOLD), start, end, 0)
             } else {
@@ -772,8 +790,6 @@ private fun renderSubgroup(
         if (isCancelled) {
             sb.setSpan(ForegroundColorSpan(cancelColor), start, end, 0)
             sb.setSpan(StrikethroughSpan(), start, end, 0)
-        } else if (isReplaced) {
-            sb.setSpan(ForegroundColorSpan(changeColor), start, end, 0)
         } else {
             sb.setSpan(ForegroundColorSpan(groupColor), start, end, 0)
         }

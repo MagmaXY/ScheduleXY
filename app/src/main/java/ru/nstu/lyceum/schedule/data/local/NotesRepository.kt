@@ -44,13 +44,13 @@ class NotesRepository(
                 emptyList()
             }
             allInternalNotes = list.toMutableList()
-            _notes.value = list.filter { it.deletedAt == null }
+            _notes.value = list.filter { !it.isDeleted }
         }
     }
 
     private fun saveNotes(newInternalList: List<ScheduleNote>) {
         allInternalNotes = newInternalList.toMutableList()
-        _notes.value = newInternalList.filter { it.deletedAt == null }
+        _notes.value = newInternalList.filter { !it.isDeleted }
         scope.launch(Dispatchers.IO) {
             try {
                 val json = gson.toJson(newInternalList)
@@ -73,6 +73,7 @@ class NotesRepository(
         val now = System.currentTimeMillis()
         val updatedNote = note.copy(
             updatedAt = now,
+            deleted = false,
             deletedAt = null
         )
         current.add(updatedNote)
@@ -83,7 +84,7 @@ class NotesRepository(
         val current = allInternalNotes.toMutableList()
         val index = current.indexOfFirst { it.id == updated.id }
         val now = System.currentTimeMillis()
-        val noteToSave = updated.copy(updatedAt = now, deletedAt = null)
+        val noteToSave = updated.copy(updatedAt = now, deleted = false, deletedAt = null)
         if (index >= 0) {
             current[index] = noteToSave
         } else {
@@ -97,7 +98,7 @@ class NotesRepository(
         val index = current.indexOfFirst { it.id == id }
         val now = System.currentTimeMillis()
         if (index >= 0) {
-            current[index] = current[index].copy(deletedAt = now, updatedAt = now)
+            current[index] = current[index].copy(deleted = true, deletedAt = now, updatedAt = now)
             saveNotes(current)
         }
     }

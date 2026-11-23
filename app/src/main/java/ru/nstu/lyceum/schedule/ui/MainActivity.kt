@@ -161,6 +161,7 @@ class MainActivity : ComponentActivity() {
                 app.yandexDiskSyncService.fetchUserInfo()
                 val res = app.yandexDiskSyncService.sync()
                 if (res is ru.nstu.lyceum.schedule.data.sync.SyncResult.Success) {
+                    ru.nstu.lyceum.schedule.widget.ScheduleWidgetProvider.notifyWidgetUpdate(this@MainActivity)
                     Toast.makeText(this@MainActivity, res.message, Toast.LENGTH_SHORT).show()
                 } else if (res is ru.nstu.lyceum.schedule.data.sync.SyncResult.Error) {
                     Toast.makeText(this@MainActivity, res.error, Toast.LENGTH_LONG).show()
@@ -244,7 +245,10 @@ class MainActivity : ComponentActivity() {
                         // Background sync when opening Notes tab
                         launch {
                             try {
-                                app.yandexDiskSyncService.sync()
+                                val res = app.yandexDiskSyncService.sync()
+                                if (res is ru.nstu.lyceum.schedule.data.sync.SyncResult.Success) {
+                                    ru.nstu.lyceum.schedule.widget.ScheduleWidgetProvider.notifyWidgetUpdate(this@MainActivity)
+                                }
                             } catch (_: Exception) {}
                         }
                     }
@@ -985,6 +989,7 @@ class MainActivity : ComponentActivity() {
                                 scope.launch {
                                     val res = app.yandexDiskSyncService.sync()
                                     if (res is ru.nstu.lyceum.schedule.data.sync.SyncResult.Success) {
+                                        ru.nstu.lyceum.schedule.widget.ScheduleWidgetProvider.notifyWidgetUpdate(this@MainActivity)
                                         Toast.makeText(this@MainActivity, res.message, Toast.LENGTH_SHORT).show()
                                     } else if (res is ru.nstu.lyceum.schedule.data.sync.SyncResult.Error) {
                                         Toast.makeText(this@MainActivity, res.error, Toast.LENGTH_LONG).show()

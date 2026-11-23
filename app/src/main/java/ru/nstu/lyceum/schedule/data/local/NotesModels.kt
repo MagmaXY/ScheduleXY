@@ -35,5 +35,9 @@ data class ScheduleNote(
     val transferPending: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
+    val deleted: Boolean? = null,
     val deletedAt: Long? = null
-)
+) {
+    val isDeleted: Boolean
+        get() = deleted == true || deletedAt != null
+}

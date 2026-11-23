@@ -60,10 +60,16 @@ class LyceumApp : Application() {
 
         // Trigger auto-sync when notes change if authorized
         notesRepository.onNotesChangedListener = {
+            // Update widget immediately when notes change locally
+            ru.nstu.lyceum.schedule.widget.ScheduleWidgetProvider.notifyWidgetUpdate(this@LyceumApp)
+
             if (yandexDiskSyncService.isAuthorized()) {
                 applicationScope.launch {
                     try {
-                        yandexDiskSyncService.sync()
+                        val res = yandexDiskSyncService.sync()
+                        if (res is ru.nstu.lyceum.schedule.data.sync.SyncResult.Success) {
+                            ru.nstu.lyceum.schedule.widget.ScheduleWidgetProvider.notifyWidgetUpdate(this@LyceumApp)
+                        }
                     } catch (_: Exception) {}
                 }
             }
@@ -73,7 +79,10 @@ class LyceumApp : Application() {
         if (yandexDiskSyncService.isAuthorized()) {
             applicationScope.launch {
                 try {
-                    yandexDiskSyncService.sync()
+                    val res = yandexDiskSyncService.sync()
+                    if (res is ru.nstu.lyceum.schedule.data.sync.SyncResult.Success) {
+                        ru.nstu.lyceum.schedule.widget.ScheduleWidgetProvider.notifyWidgetUpdate(this@LyceumApp)
+                    }
                 } catch (_: Exception) {}
             }
         }
