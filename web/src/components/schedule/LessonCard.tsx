@@ -346,12 +346,12 @@ export const LessonCard: React.FC<Props> = ({
                               e.stopPropagation();
                               onTeacherClassClick?.(displayClass);
                             }}
-                            className={`px-1 py-0.5 rounded font-bold border transition-colors ${
+                            className={`px-1 py-0.5 rounded font-bold border transition-colors hover:bg-[var(--md-surface-variant)] ${
                               isSgCancelled
-                                ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
+                                ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
                                 : isClassChanged
-                                ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
-                                : 'text-[var(--nika-teacher)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
+                                ? 'text-[var(--nika-change)] border-[var(--nika-change)]/60'
+                                : 'text-[var(--nika-teacher)] border-[var(--md-border-light)]'
                             }`}
                           >
                             {displayClass}
@@ -365,12 +365,12 @@ export const LessonCard: React.FC<Props> = ({
                               e.stopPropagation();
                               onTeacherClassClick?.(displayTeacher);
                             }}
-                            className={`italic px-1 py-0.5 rounded border transition-colors ${
+                            className={`italic px-1 py-0.5 rounded border transition-colors hover:bg-[var(--md-surface-variant)] ${
                               isSgCancelled
-                                ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
+                                ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
                                 : isTeacherChanged
-                                ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
-                                : 'text-[var(--nika-teacher)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
+                                ? 'text-[var(--nika-change)] border-[var(--nika-change)]/60'
+                                : 'text-[var(--nika-teacher)] border-[var(--md-border-light)]'
                             }`}
                           >
                             {displayTeacher}
@@ -397,12 +397,12 @@ export const LessonCard: React.FC<Props> = ({
                             e.stopPropagation();
                             if (cleanRoom) onRoomClick?.(cleanRoom, lesson.num);
                           }}
-                          className={`font-bold px-1 py-0.5 rounded border transition-colors ${
+                          className={`font-bold px-1 py-0.5 rounded border transition-colors hover:bg-[var(--md-surface-variant)] ${
                             isSgCancelled
-                              ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
+                              ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
                               : isRoomChanged
-                              ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
-                              : 'text-[var(--nika-room)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
+                              ? 'text-[var(--nika-change)] border-[var(--nika-change)]/60'
+                              : 'text-[var(--nika-room)] border-[var(--md-border-light)]'
                           }`}
                         >
                           {roomText}
