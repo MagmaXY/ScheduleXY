@@ -7,6 +7,7 @@ import {
   TeacherItem,
 } from '../types/api';
 import { scheduleRepository } from '../api/scheduleRepository';
+import { getDefaultScheduleDayIndex } from '../domain/bellSchedule';
 import { usePreferencesStore } from './preferencesStore';
 
 interface ScheduleState {
@@ -40,7 +41,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   eventsList: [],
   eventCategories: [],
   isLoading: false,
-  selectedDayIndex: 0,
+  selectedDayIndex: getDefaultScheduleDayIndex(),
   selectedArchiveWeek: -1,
   archiveDayIndex: 0,
 
