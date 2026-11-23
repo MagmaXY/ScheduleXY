@@ -227,7 +227,7 @@ export const PairCard: React.FC<Props> = ({
                                   e.stopPropagation();
                                   onTeacherClassClick?.(className);
                                 }}
-                                className="px-1 py-0.5 rounded font-bold border border-[var(--md-border-light)] text-[var(--nika-cancel)] line-through"
+                                className="px-1 py-0.5 rounded font-bold border border-[var(--md-border-light)] text-[var(--nika-cancel)] line-through hover:bg-[var(--md-surface-variant)] transition-colors"
                               >
                                 {className}
                               </button>
@@ -240,7 +240,7 @@ export const PairCard: React.FC<Props> = ({
                                   e.stopPropagation();
                                   onTeacherClassClick?.(teacher);
                                 }}
-                                className="italic px-1 py-0.5 rounded border border-[var(--md-border-light)] text-[var(--nika-cancel)] line-through"
+                                className="italic px-1 py-0.5 rounded border border-[var(--md-border-light)] text-[var(--nika-cancel)] line-through hover:bg-[var(--md-surface-variant)] transition-colors"
                               >
                                 {teacher}
                               </button>
@@ -258,7 +258,7 @@ export const PairCard: React.FC<Props> = ({
                                 e.stopPropagation();
                                 if (cleanRoom) onRoomClick?.(cleanRoom, l1.num);
                               }}
-                              className="font-bold px-1 py-0.5 rounded border border-[var(--md-border-light)] text-[var(--nika-cancel)] line-through"
+                              className="font-bold px-1 py-0.5 rounded border border-[var(--md-border-light)] text-[var(--nika-cancel)] line-through hover:bg-[var(--md-surface-variant)] transition-colors"
                             >
                               {roomText}
                             </button>
@@ -374,11 +374,11 @@ export const PairCard: React.FC<Props> = ({
                                 e.stopPropagation();
                                 onTeacherClassClick?.(displayClass);
                               }}
-                              className={`px-1 py-0.5 rounded font-bold border ${
+                              className={`px-1 py-0.5 rounded font-bold border transition-colors ${
                                 isSgCancelled
-                                  ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
+                                  ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                                   : isClassChanged
-                                  ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20'
+                                  ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
                                   : 'text-[var(--nika-teacher)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                               }`}
                             >
@@ -393,11 +393,11 @@ export const PairCard: React.FC<Props> = ({
                                 e.stopPropagation();
                                 onTeacherClassClick?.(displayTeacher);
                               }}
-                              className={`italic px-1 py-0.5 rounded border ${
+                              className={`italic px-1 py-0.5 rounded border transition-colors ${
                                 isSgCancelled
-                                  ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
+                                  ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                                   : isTeacherChanged
-                                  ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20'
+                                  ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
                                   : 'text-[var(--nika-teacher)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                               }`}
                             >
@@ -425,11 +425,11 @@ export const PairCard: React.FC<Props> = ({
                               e.stopPropagation();
                               if (cleanRoom) onRoomClick?.(cleanRoom, l1.num);
                             }}
-                            className={`font-bold px-1 py-0.5 rounded border ${
+                            className={`font-bold px-1 py-0.5 rounded border transition-colors ${
                               isSgCancelled
-                                ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
+                                ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                                 : isRoomChanged
-                                ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20'
+                                ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
                                 : 'text-[var(--nika-room)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                             }`}
                           >
@@ -754,12 +754,12 @@ function renderLessonContent(
                       e.stopPropagation();
                       onTeacherClassClick?.(displayClass);
                     }}
-                    className={`px-1 py-0.5 rounded font-bold border ${
+                    className={`px-1 py-0.5 rounded font-bold border transition-colors ${
                       isSgCancelled
-                        ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
+                        ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                         : isClassChanged
-                        ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20'
-                        : 'text-[var(--nika-teacher)] border-[var(--md-border-light)]'
+                        ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
+                        : 'text-[var(--nika-teacher)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                     }`}
                   >
                     {displayClass}
@@ -773,12 +773,12 @@ function renderLessonContent(
                       e.stopPropagation();
                       onTeacherClassClick?.(displayTeacher);
                     }}
-                    className={`italic px-1 py-0.5 rounded border ${
+                    className={`italic px-1 py-0.5 rounded border transition-colors ${
                       isSgCancelled
-                        ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
+                        ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                         : isTeacherChanged
-                        ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20'
-                        : 'text-[var(--nika-teacher)] border-[var(--md-border-light)]'
+                        ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
+                        : 'text-[var(--nika-teacher)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                     }`}
                   >
                     {displayTeacher}
@@ -799,12 +799,12 @@ function renderLessonContent(
                     e.stopPropagation();
                     if (cleanRoom) onRoomClick?.(cleanRoom, lesson.num);
                   }}
-                  className={`font-bold px-1 py-0.5 rounded border ${
+                  className={`font-bold px-1 py-0.5 rounded border transition-colors ${
                     isSgCancelled
-                      ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)]'
+                      ? 'text-[var(--nika-cancel)] line-through border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                       : isRoomChanged
-                      ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20'
-                      : 'text-[var(--nika-room)] border-[var(--md-border-light)]'
+                      ? 'text-[var(--nika-change)] border-[var(--nika-change)]/40 bg-[var(--nika-change-bg)]/20 hover:bg-[var(--nika-change-bg)]/35'
+                      : 'text-[var(--nika-room)] border-[var(--md-border-light)] hover:bg-[var(--md-surface-variant)]'
                   }`}
                 >
                   {roomText}
