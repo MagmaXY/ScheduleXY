@@ -231,23 +231,7 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
         )}
       </div>
 
-      {/* 4. "До уроков" Note Slot */}
-      {beforeLessonsNote ? (
-        <div
-          onClick={() => toggleCompleted(beforeLessonsNote.id)}
-          className={`mx-3 my-2 p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-            beforeLessonsNote.isCompleted
-              ? 'bg-[var(--md-surface)]/60 line-through opacity-60 text-[var(--md-text-muted)] border-[var(--md-border-light)]'
-              : 'bg-[var(--nika-gold-bg)]/40 border-[var(--nika-gold)]/40 text-[var(--md-text-primary)]'
-          }`}
-        >
-          <span className="text-xs font-semibold">
-            📌 До уроков: {beforeLessonsNote.text}
-          </span>
-        </div>
-      ) : null}
-
-      {/* 5. Lessons / Pairs List */}
+      {/* 4. Lessons / Pairs List with embedded Before/After notes aligned with lesson content */}
       <div className="flex-1 bg-[var(--md-surface)]">
         {isLoading ? (
           <div className="py-20 text-center">
@@ -267,6 +251,37 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
           </div>
         ) : (
           <div className="divide-y divide-[var(--md-border-light)]">
+            {/* "До уроков" Note Slot */}
+            {beforeLessonsNote && (
+              <div
+                onClick={() => toggleCompleted(beforeLessonsNote.id)}
+                className={`w-full flex items-center px-3.5 py-2.5 gap-2.5 cursor-pointer select-text transition-colors border-b border-[var(--md-border-light)] ${
+                  beforeLessonsNote.isCompleted
+                    ? 'bg-[var(--md-surface)]/60 opacity-60 text-[var(--md-text-muted)]'
+                    : 'bg-[var(--md-surface)] text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
+                }`}
+              >
+                {/* 76px width container (w-5 (20px) + gap-2.5 (10px) + w-12 (48px) = 78px approx) */}
+                <div className="w-[74px] shrink-0 flex items-center justify-center text-center">
+                  <span className="font-semibold text-[11px] leading-tight text-[var(--md-text-secondary)]">
+                    До уроков
+                  </span>
+                </div>
+                {/* Note text aligned with subject column */}
+                <div className="flex-1 min-w-0 pr-2">
+                  <p
+                    className={`text-[12px] leading-snug break-words ${
+                      beforeLessonsNote.isCompleted
+                        ? 'line-through text-[var(--md-text-muted)]'
+                        : 'text-[var(--md-text-secondary)] font-medium'
+                    }`}
+                  >
+                    {beforeLessonsNote.text}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {processedItems.map((item, idx) => {
               if (item.type === 'pair') {
                 const ch1 = getChangesForLesson(
@@ -364,25 +379,40 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
                 />
               );
             })}
+
+            {/* "После уроков" Note Slot directly under the last lesson */}
+            {afterLessonsNote && (
+              <div
+                onClick={() => toggleCompleted(afterLessonsNote.id)}
+                className={`w-full flex items-center px-3.5 py-2.5 gap-2.5 cursor-pointer select-text transition-colors border-b border-[var(--md-border-light)] ${
+                  afterLessonsNote.isCompleted
+                    ? 'bg-[var(--md-surface)]/60 opacity-60 text-[var(--md-text-muted)]'
+                    : 'bg-[var(--md-surface)] text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
+                }`}
+              >
+                {/* 76px width container */}
+                <div className="w-[74px] shrink-0 flex items-center justify-center text-center">
+                  <span className="font-semibold text-[11px] leading-tight text-[var(--md-text-secondary)]">
+                    После уроков
+                  </span>
+                </div>
+                {/* Note text aligned with subject column */}
+                <div className="flex-1 min-w-0 pr-2">
+                  <p
+                    className={`text-[12px] leading-snug break-words ${
+                      afterLessonsNote.isCompleted
+                        ? 'line-through text-[var(--md-text-muted)]'
+                        : 'text-[var(--md-text-secondary)] font-medium'
+                    }`}
+                  >
+                    {afterLessonsNote.text}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* 6. "После уроков" Note Slot */}
-      {afterLessonsNote ? (
-        <div
-          onClick={() => toggleCompleted(afterLessonsNote.id)}
-          className={`mx-3 my-2 p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-            afterLessonsNote.isCompleted
-              ? 'bg-[var(--md-surface)]/60 line-through opacity-60 text-[var(--md-text-muted)] border-[var(--md-border-light)]'
-              : 'bg-[var(--nika-gold-bg)]/40 border-[var(--nika-gold)]/40 text-[var(--md-text-primary)]'
-          }`}
-        >
-          <span className="text-xs font-semibold">
-            📌 После уроков: {afterLessonsNote.text}
-          </span>
-        </div>
-      ) : null}
 
       {/* Note Edit Modal */}
       {dialogOpen && (

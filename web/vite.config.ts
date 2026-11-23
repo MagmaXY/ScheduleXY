@@ -56,27 +56,27 @@ export default defineConfig({
           {
             name: 'Расписание',
             url: './#/schedule',
-            icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }],
+            icons: [{ src: 'icons/shortcut-schedule.png', sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Календарь',
             url: './#/calendar',
-            icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }],
+            icons: [{ src: 'icons/shortcut-calendar.png', sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Заметки и ДЗ',
             url: './#/notes',
-            icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }],
+            icons: [{ src: 'icons/shortcut-notes.png', sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Кабинеты',
             url: './#/freerooms',
-            icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }],
+            icons: [{ src: 'icons/shortcut-rooms.png', sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Архив',
             url: './#/archive',
-            icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }],
+            icons: [{ src: 'icons/shortcut-archive.png', sizes: '192x192', type: 'image/png' }],
           },
         ],
       },
