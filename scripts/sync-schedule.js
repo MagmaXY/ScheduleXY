@@ -74,6 +74,7 @@ async function main() {
   ensureDir(DATA_DIR);
   ensureDir(path.join(DATA_DIR, 'class'));
   ensureDir(path.join(DATA_DIR, 'teacher'));
+  ensureDir(path.join(DATA_DIR, 'archive'));
 
   console.log('1. Fetching classes list...');
   let classes = [];
@@ -97,6 +98,26 @@ async function main() {
     console.error('Failed to fetch teachers:', err.message);
   }
 
+  console.log('3. Fetching events (calendar)...');
+  try {
+    const eventsRes = await fetchJson(`${BASE_URL}/events`);
+    fs.writeFileSync(path.join(DATA_DIR, 'events.json'), JSON.stringify(eventsRes, null, 2));
+    console.log('Saved events.');
+  } catch (err) {
+    console.error('Failed to fetch events:', err.message);
+  }
+
+  console.log('4. Fetching archive weeks...');
+  let archiveWeeks = [];
+  try {
+    const archiveRes = await fetchJson(`${BASE_URL}/schedule/archive`);
+    fs.writeFileSync(path.join(DATA_DIR, 'archive.json'), JSON.stringify(archiveRes, null, 2));
+    archiveWeeks = (archiveRes && archiveRes.weeks) ? archiveRes.weeks : [];
+    console.log(`Saved archive weeks: ${archiveWeeks.length}.`);
+  } catch (err) {
+    console.error('Failed to fetch archive weeks:', err.message);
+  }
+
   // Load previous state snapshot for diff checking
   const snapshotFile = path.join(DATA_DIR, 'schedule_snapshot.json');
   let oldSnapshots = {};
@@ -110,7 +131,7 @@ async function main() {
   const newSnapshots = {};
   const changedClasses = [];
 
-  console.log('3. Fetching schedules for classes (week 0)...');
+  console.log('5. Fetching schedules for classes (week 0)...');
   for (const c of classes) {
     const className = c.name;
     const safeName = encodeURIComponent(className);
@@ -135,10 +156,10 @@ async function main() {
     } catch (err) {
       console.warn(`Failed to fetch class ${className}:`, err.message);
     }
-    await sleep(40);
+    await sleep(30);
   }
 
-  console.log('4. Fetching schedules for teachers (week 0)...');
+  console.log('6. Fetching schedules for teachers (week 0)...');
   for (const t of teachers) {
     const teacherName = t.name;
     const safeName = encodeURIComponent(teacherName);
@@ -152,7 +173,7 @@ async function main() {
     } catch (err) {
       // Ignore individual teacher fails
     }
-    await sleep(40);
+    await sleep(30);
   }
 
   // Save updated snapshots

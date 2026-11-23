@@ -56,6 +56,12 @@ export async function fetchWithProxy<T>(
     if (ep === 'schedule/teachers') {
       return `${cleanBase}data/teachers.json`;
     }
+    if (ep === 'events') {
+      return `${cleanBase}data/events.json`;
+    }
+    if (ep === 'schedule/archive') {
+      return `${cleanBase}data/archive.json`;
+    }
     const classMatch = ep.match(/^schedule\/class\/([^?]+)(\?week=0)?$/);
     if (classMatch) {
       return `${cleanBase}data/class/${classMatch[1]}.json`;
