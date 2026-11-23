@@ -1,13 +1,22 @@
-name: Check Lyceum Schedule Changes & Send Push
+name: Check Lyceum Schedule Changes & Update Cache
 
 on:
   schedule:
-    # Run every 30 minutes from 06:00 to 20:00 MSK (03:00 to 17:00 UTC) on weekdays
+    # Run every 30 minutes from 06:00 to 20:00 MSK (03:00 to 17:00 UTC) on Monday-Saturday
     - cron: '*/30 3-17 * * 1-6'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
-  check-changes:
+  sync-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -17,65 +26,44 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
 
-      - name: Check schedule changes and notify via OneSignal
+      - name: Fetch Lyceum Schedule & Check Changes
         env:
           ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
           ONESIGNAL_API_KEY: ${{ secrets.ONESIGNAL_API_KEY }}
         run: |
-          node - << 'EOF'
-          const https = require('https');
+          node scripts/sync-schedule.js
 
-          const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
-          const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
+      - name: Commit & push updated schedule data if changed
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add web/public/data/
+          if git diff --staged --quiet; then
+            echo "No schedule updates to commit."
+          else
+            git commit -m "chore: auto-update schedule cache data [skip ci]"
+            git push origin main
+          fi
 
-          if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
-            console.log('OneSignal secrets not configured yet. Skipping push check.');
-            process.exit(0);
-          }
+      - name: Install dependencies
+        working-directory: ./web
+        run: npm ci
 
-          function fetchJson(url) {
-            return new Promise((resolve, reject) => {
-              https.get(url, (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', () => {
-                  try { resolve(JSON.parse(data)); } catch (e) { resolve(null); }
-                });
-              }).on('error', reject);
-            });
-          }
+      - name: Build Web App
+        working-directory: ./web
+        run: npm run build
 
-          function sendPush(className, message) {
-            const payload = JSON.stringify({
-              app_id: ONESIGNAL_APP_ID,
-              filters: [
-                { field: 'tag', key: 'class', relation: '=', value: className }
-              ],
-              headings: { en: 'Лицей НГТУ — Изменение расписания', ru: 'Лицей НГТУ — Изменение расписания' },
-              contents: { en: message, ru: message }
-            });
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-            const authHeader = ONESIGNAL_API_KEY.startsWith('os_v2_') || ONESIGNAL_API_KEY.startsWith('Key ') || ONESIGNAL_API_KEY.startsWith('Basic ')
-              ? (ONESIGNAL_API_KEY.startsWith('os_v2_') ? `Key ${ONESIGNAL_API_KEY}` : ONESIGNAL_API_KEY)
-              : `Basic ${ONESIGNAL_API_KEY}`;
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
 
-            const req = https.request('https://onesignal.com/api/v1/notifications', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': authHeader
-              }
-            }, (res) => {
-              console.log(`Push sent for ${className}: status ${res.statusCode}`);
-            });
-            req.write(payload);
-            req.end();
-          }
-
-          async function main() {
-            console.log('Schedule watcher ready.');
-          }
-
-          main();
-          EOF
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
