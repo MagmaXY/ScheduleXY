@@ -61,21 +61,36 @@ export async function fetchWithProxy<T>(
     }
     const classMatch = ep.match(/^schedule\/class\/([^?]+)(?:\?week=([-\d]+))?$/);
     if (classMatch) {
-      const clsName = classMatch[1];
+      const rawName = classMatch[1];
+      let decodedName = rawName;
+      try {
+        decodedName = decodeURIComponent(rawName);
+      } catch {
+        // ignore
+      }
+      const encodedName = encodeURIComponent(decodedName);
       const week = classMatch[2] || '0';
       if (week === '0') {
-        return `${cleanBase}data/class/${clsName}.json`;
+        // Return encoded URL path (standard for browsers / web servers)
+        return `${cleanBase}data/class/${encodedName}.json`;
       }
       if (['-1', '-2', '-3'].includes(week)) {
-        return `${cleanBase}data/archive/week_${week}/${clsName}.json`;
+        return `${cleanBase}data/archive/week_${week}/${encodedName}.json`;
       }
     }
     const teacherMatch = ep.match(/^schedule\/teacher\/([^?]+)(?:\?week=([-\d]+))?$/);
     if (teacherMatch) {
-      const tchName = teacherMatch[1];
+      const rawName = teacherMatch[1];
+      let decodedName = rawName;
+      try {
+        decodedName = decodeURIComponent(rawName);
+      } catch {
+        // ignore
+      }
+      const encodedName = encodeURIComponent(decodedName);
       const week = teacherMatch[2] || '0';
       if (week === '0') {
-        return `${cleanBase}data/teacher/${tchName}.json`;
+        return `${cleanBase}data/teacher/${encodedName}.json`;
       }
     }
     return null;

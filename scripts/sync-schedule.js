@@ -195,11 +195,15 @@ async function main() {
     const className = c.name;
     const safeName = encodeURIComponent(className);
     const targetFile = path.join(DATA_DIR, 'class', `${safeName}.json`);
+    const rawTargetFile = path.join(DATA_DIR, 'class', `${className}.json`);
 
     try {
       const schedule = await fetchJson(`${BASE_URL}/schedule/class/${safeName}?week=0`);
       if (schedule) {
         fs.writeFileSync(targetFile, JSON.stringify(schedule));
+        if (targetFile !== rawTargetFile) {
+          fs.writeFileSync(rawTargetFile, JSON.stringify(schedule));
+        }
         allClassSchedules.push(schedule);
         
         // Compute diff hash / representation
@@ -224,11 +228,15 @@ async function main() {
     const teacherName = t.name;
     const safeName = encodeURIComponent(teacherName);
     const targetFile = path.join(DATA_DIR, 'teacher', `${safeName}.json`);
+    const rawTargetFile = path.join(DATA_DIR, 'teacher', `${teacherName}.json`);
 
     try {
       const schedule = await fetchJson(`${BASE_URL}/schedule/teacher/${safeName}?week=0`);
       if (schedule) {
         fs.writeFileSync(targetFile, JSON.stringify(schedule));
+        if (targetFile !== rawTargetFile) {
+          fs.writeFileSync(rawTargetFile, JSON.stringify(schedule));
+        }
       }
     } catch (err) {
       // Ignore individual teacher fails
@@ -255,11 +263,15 @@ async function main() {
     for (const c of classes) {
       const safeName = encodeURIComponent(c.name);
       const targetFile = path.join(DATA_DIR, 'archive', `week_${weekParam}`, `${safeName}.json`);
+      const rawTargetFile = path.join(DATA_DIR, 'archive', `week_${weekParam}`, `${c.name}.json`);
       if (!fs.existsSync(targetFile)) {
         try {
           const archSchedule = await fetchJson(`${BASE_URL}/schedule/class/${safeName}?week=${weekParam}`);
           if (archSchedule) {
             fs.writeFileSync(targetFile, JSON.stringify(archSchedule));
+            if (targetFile !== rawTargetFile) {
+              fs.writeFileSync(rawTargetFile, JSON.stringify(archSchedule));
+            }
           }
         } catch (e) {
           // ignore
