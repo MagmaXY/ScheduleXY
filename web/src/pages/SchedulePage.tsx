@@ -299,11 +299,25 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
                   item.secondLesson.num
                 );
 
-                const isActive =
-                  realtimeState.dayIndex === selectedDayIndex &&
-                  realtimeState.bellState.type === 'in_lesson' &&
-                  (realtimeState.bellState.num === item.firstLesson.num ||
-                    realtimeState.bellState.num === item.secondLesson.num);
+                const isToday = isThisWeek && realtimeState.dayIndex === selectedDayIndex;
+                const activeLessonNum =
+                  isToday && realtimeState.lessonBellState.type === 'in_lesson'
+                    ? realtimeState.lessonBellState.num
+                    : null;
+                const activePairNum =
+                  isToday && realtimeState.pairBellState.type === 'in_lesson'
+                    ? realtimeState.pairBellState.num
+                    : null;
+
+                const isPairActive =
+                  Boolean(
+                    isToday &&
+                      (activePairNum === item.pairNum ||
+                        activeLessonNum === item.firstLesson.num ||
+                        activeLessonNum === item.secondLesson.num)
+                  );
+                const isL1Active = Boolean(isToday && activeLessonNum === item.firstLesson.num);
+                const isL2Active = Boolean(isToday && activeLessonNum === item.secondLesson.num);
 
                 const pairNotes = dayNotes.filter(
                   (n) =>
@@ -323,7 +337,9 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
                     changes1={ch1}
                     changes2={ch2}
                     isTeacherMode={isTeacher}
-                    isActiveNow={isActive}
+                    isActiveNow={isPairActive}
+                    isActiveL1={isL1Active}
+                    isActiveL2={isL2Active}
                     notes={pairNotes}
                     onToggleNoteCompleted={toggleCompleted}
                     userSubgroup={1}
@@ -350,10 +366,13 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
                 selectedDayIndex,
                 item.lesson.num
               );
+              const isToday = isThisWeek && realtimeState.dayIndex === selectedDayIndex;
               const isActive =
-                realtimeState.dayIndex === selectedDayIndex &&
-                realtimeState.bellState.type === 'in_lesson' &&
-                realtimeState.bellState.num === item.lesson.num;
+                Boolean(
+                  isToday &&
+                    realtimeState.lessonBellState.type === 'in_lesson' &&
+                    realtimeState.lessonBellState.num === item.lesson.num
+                );
 
               const lessonNotes = dayNotes.filter(
                 (n) => n.slotType === 'lesson' && n.lessonNum === item.lesson.num

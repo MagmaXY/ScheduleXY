@@ -11,6 +11,8 @@ import { usePreferencesStore } from '../store/preferencesStore';
 export interface RealtimeState {
   dayIndex: number;
   bellState: BellState;
+  lessonBellState: BellState;
+  pairBellState: BellState;
 }
 
 export function useRealtimeSync(): RealtimeState {
@@ -18,12 +20,13 @@ export function useRealtimeSync(): RealtimeState {
 
   const [state, setState] = useState<RealtimeState>(() => {
     const now = new Date();
-    const bell = statusBarPairsMode
-      ? getCurrentPairState(now, false)
-      : getCurrentBellState(now, false);
+    const lessonBell = getCurrentBellState(now, false);
+    const pairBell = getCurrentPairState(now, false);
     return {
       dayIndex: getScheduleDayIndex(now),
-      bellState: bell,
+      bellState: statusBarPairsMode ? pairBell : lessonBell,
+      lessonBellState: lessonBell,
+      pairBellState: pairBell,
     };
   });
 
@@ -35,13 +38,14 @@ export function useRealtimeSync(): RealtimeState {
       const vac = await isVacation(now);
       if (isCancelled) return;
 
-      const bell = statusBarPairsMode
-        ? getCurrentPairState(now, vac)
-        : getCurrentBellState(now, vac);
+      const lessonBell = getCurrentBellState(now, vac);
+      const pairBell = getCurrentPairState(now, vac);
 
       setState({
         dayIndex: getScheduleDayIndex(now),
-        bellState: bell,
+        bellState: statusBarPairsMode ? pairBell : lessonBell,
+        lessonBellState: lessonBell,
+        pairBellState: pairBell,
       });
     }
 

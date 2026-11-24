@@ -81,15 +81,15 @@ export const Header: React.FC<Props> = ({
   const percent = progress !== null ? Math.round(progress * 100) : 0;
 
   const statusColorClass = isLesson
-    ? 'text-[#00875A] dark:text-[#28C76F]'
+    ? 'text-[var(--md-secondary)]'
     : isBreak
-    ? 'text-[#D97706] dark:text-[#FBBF24]'
+    ? 'text-[var(--nika-gold)]'
     : 'text-[var(--nika-subject)]';
 
   const progressBgClass = isLesson
-    ? 'bg-[#00875A] dark:bg-[#28C76F]'
+    ? 'bg-[var(--md-secondary)]'
     : isBreak
-    ? 'bg-[#D97706] dark:bg-[#FBBF24]'
+    ? 'bg-[var(--nika-gold)]'
     : 'bg-[var(--nika-subject)]';
 
   return (

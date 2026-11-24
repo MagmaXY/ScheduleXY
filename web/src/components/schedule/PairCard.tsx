@@ -20,6 +20,8 @@ interface Props {
   changes2: ScheduleChangeItem[];
   isTeacherMode: boolean;
   isActiveNow: boolean;
+  isActiveL1?: boolean;
+  isActiveL2?: boolean;
   notes?: any[];
   onToggleNoteCompleted?: (id: string) => void;
   userSubgroup?: number;
@@ -136,6 +138,8 @@ export const PairCard: React.FC<Props> = ({
   changes2,
   isTeacherMode,
   isActiveNow,
+  isActiveL1 = false,
+  isActiveL2 = false,
   notes,
   onToggleNoteCompleted,
   onTeacherClassClick,
@@ -482,9 +486,7 @@ export const PairCard: React.FC<Props> = ({
   // -------------------------------------------------------------
   return (
     <div
-      className={`w-full border-b border-[var(--md-border-light)] transition-colors select-text ${
-        isActiveNow ? 'bg-[var(--nika-active-bg)]' : ''
-      }`}
+      className="w-full border-b border-[var(--md-border-light)] transition-colors select-text"
     >
       <div className="flex items-start px-3.5 py-2 gap-2.5">
         {/* Roman Pair Number in Center Left */}
@@ -495,7 +497,11 @@ export const PairCard: React.FC<Props> = ({
         {/* Column of two split lessons */}
         <div className="flex-1 divide-y divide-[var(--md-border-light)]/40">
           {/* Sub-Lesson 1 */}
-          <div className="flex items-start gap-2.5 py-1.5">
+          <div
+            className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-colors ${
+              isActiveL1 ? 'bg-[var(--nika-active-bg)]' : ''
+            }`}
+          >
             <div className="w-12 shrink-0 flex flex-col items-start leading-none pt-0.5">
               <span className="font-semibold text-[11.5px] text-[var(--nika-lsn-time)]">
                 {splitTimes1.start}
@@ -510,7 +516,11 @@ export const PairCard: React.FC<Props> = ({
           </div>
 
           {/* Sub-Lesson 2 */}
-          <div className="flex items-start gap-2.5 py-1.5">
+          <div
+            className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-colors ${
+              isActiveL2 ? 'bg-[var(--nika-active-bg)]' : ''
+            }`}
+          >
             <div className="w-12 shrink-0 flex flex-col items-start leading-none pt-0.5">
               <span className="font-semibold text-[11.5px] text-[var(--nika-lsn-time)]">
                 {splitTimes2.start}

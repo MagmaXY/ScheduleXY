@@ -108,11 +108,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     root.style.setProperty('--nika-gold', tokens.gold);
     root.style.setProperty('--nika-gold-bg', tokens.goldBg);
 
-    // Update theme-color meta tag
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', tokens.surface);
+    // Update theme-color meta tag for browser / OS status bar
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta');
+      metaThemeColor.setAttribute('name', 'theme-color');
+      document.head.appendChild(metaThemeColor);
     }
+    metaThemeColor.setAttribute('content', tokens.surface);
   }, [tokens, isDarkMode, themePreset]);
 
   return (

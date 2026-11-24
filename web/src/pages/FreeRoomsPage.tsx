@@ -37,7 +37,7 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
       const l = parseInt(lessonParam, 10);
       if (!isNaN(l) && l >= 1 && l <= 12) return l;
     }
-    return realtimeState.bellState.type === 'in_lesson' ? realtimeState.bellState.num : 1;
+    return realtimeState.lessonBellState.type === 'in_lesson' ? realtimeState.lessonBellState.num : 1;
   });
 
   // If query parameters change dynamically, sync them
@@ -228,8 +228,8 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
             const isSelected = num === selectedLesson;
             const isCurrent =
               realtimeState.dayIndex === selectedDay &&
-              realtimeState.bellState.type === 'in_lesson' &&
-              realtimeState.bellState.num === num;
+              realtimeState.lessonBellState.type === 'in_lesson' &&
+              realtimeState.lessonBellState.num === num;
 
             const textColor = isCurrent
               ? 'text-[var(--nika-subject)] font-bold'
