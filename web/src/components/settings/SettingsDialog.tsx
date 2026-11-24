@@ -412,15 +412,9 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
                       </button>
                     </div>
                   </div>
-                  <div className="mt-1 text-[11px] text-[var(--md-text-muted)] leading-tight">
-                    Файл хранится в папке приложения на Яндекс Диске и автоматически синхронизируется между ПК и телефоном.
-                  </div>
                 </div>
               ) : (
                 <div>
-                  <div className="text-[12px] text-[var(--md-text-secondary)] mb-2.5">
-                    Подключите Яндекс, чтобы ваши заметки и ДЗ автоматически появлялись на всех устройствах (компьютере, телефоне и в приложении).
-                  </div>
                   <button
                     type="button"
                     onClick={() => yandexSyncService.startLogin()}
@@ -493,7 +487,7 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
               <Bell className="w-3.5 h-3.5" />
               <span>Push-уведомления</span>
             </h4>
-            <div className="p-3 rounded-2xl bg-[var(--md-surface-variant)]/50 space-y-2">
+            <div className="p-3 rounded-2xl bg-[var(--md-surface-variant)]/50">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[var(--md-text-primary)]">
                   Уведомления об изменениях расписания
@@ -520,9 +514,6 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
                   )}
                 </button>
               </div>
-              <p className="text-[10px] text-[var(--md-text-muted)] leading-relaxed">
-                Приходят при публикации нового расписания или замен для вашего класса / преподавателя ({targetName || 'не выбран'}).
-              </p>
             </div>
           </div>
         </div>

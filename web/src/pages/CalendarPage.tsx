@@ -408,6 +408,26 @@ export const CalendarPage: React.FC = () => {
         </div>
       )}
 
+      {/* Search Input for Events in Calendar */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-[var(--md-text-muted)] absolute left-3.5 top-3" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Поиск по событиям..."
+          className="w-full pl-10 pr-9 py-2 bg-[var(--md-surface)] border border-[var(--md-border)] rounded-2xl text-xs sm:text-sm outline-none focus:border-[var(--nika-subject)] transition-colors"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-2.5 text-[var(--md-text-muted)] hover:text-[var(--md-text-primary)]"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Categories Horizontal Ribbon matching Android CalendarScreen.kt */}
       <div data-no-swipe="true" className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         <button
@@ -480,26 +500,6 @@ export const CalendarPage: React.FC = () => {
             {cat.title}
           </button>
         ))}
-      </div>
-
-      {/* Search Input for Events in Calendar */}
-      <div className="relative">
-        <Search className="w-4 h-4 text-[var(--md-text-muted)] absolute left-3.5 top-3" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Поиск по событиям..."
-          className="w-full pl-10 pr-9 py-2 bg-[var(--md-surface)] border border-[var(--md-border)] rounded-2xl text-xs sm:text-sm outline-none focus:border-[var(--nika-subject)] transition-colors"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-2.5 text-[var(--md-text-muted)] hover:text-[var(--md-text-primary)]"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
       </div>
 
       {/* Events and Notes List */}

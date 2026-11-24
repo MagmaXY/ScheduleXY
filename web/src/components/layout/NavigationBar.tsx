@@ -58,7 +58,7 @@ export const NavigationBar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
 
 export const NavigationRail: React.FC<Props> = ({ currentTab, onSelectTab }) => {
   return (
-    <aside className="hidden lg:flex flex-col items-center w-20 bg-[var(--md-surface)] border-r border-[var(--md-border)] py-10 gap-6 shrink-0 safe-top">
+    <aside className="hidden lg:flex flex-col items-center w-20 bg-[var(--md-surface)] border-r border-[var(--md-border)] pt-8 pb-10 gap-6 shrink-0 safe-top">
       <div className="flex flex-col items-center gap-4 w-full">
         {TABS.map((tab) => {
           const Icon = tab.icon;

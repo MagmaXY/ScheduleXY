@@ -17,6 +17,7 @@ import {
   TelegramTwoToneIcon,
   MaxTwoToneIcon,
   YoutubeTwoToneIcon,
+  GithubLogoIcon,
 } from './ServiceIcons';
 
 interface Props {
@@ -151,7 +152,7 @@ export const InfoSheet: React.FC<Props> = ({ onClose }) => {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-[var(--md-text-primary)] hover:text-[var(--nika-subject)] transition-colors"
                 >
-                  <Code className="w-4 h-4 text-[var(--nika-subject)] shrink-0" />
+                  <GithubLogoIcon className="w-4 h-4 text-[var(--nika-subject)] shrink-0" />
                   <span className="font-semibold text-xs">GitHub: MagmaXY/ScheduleXY</span>
                 </a>
                 <button
@@ -203,7 +204,7 @@ export const InfoSheet: React.FC<Props> = ({ onClose }) => {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-[var(--md-text-primary)] hover:text-[var(--nika-subject)] transition-colors"
                 >
-                  <Code className="w-4 h-4 text-[var(--nika-subject)] shrink-0" />
+                  <GithubLogoIcon className="w-4 h-4 text-[var(--nika-subject)] shrink-0" />
                   <span className="font-semibold text-xs">GitHub: paulmy</span>
                 </a>
                 <button

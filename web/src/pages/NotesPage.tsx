@@ -139,73 +139,75 @@ export const NotesPage: React.FC = () => {
     >
       {/* Target Selector Header - matched with Schedule and Archive */}
       <div className="px-3 pt-2.5 pb-1.5 bg-[var(--md-surface)]">
-        <TargetSelector onTargetChanged={() => loadSchedule()} />
+        <TargetSelector
+          onTargetChanged={() => loadSchedule()}
+          extraRight={
+            <div data-no-swipe="true" className="flex items-center gap-1.5 overflow-x-auto scrollbar-none ml-1">
+              <button
+                onClick={() => setFilterType('all')}
+                className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  filterType === 'all'
+                    ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                    : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                }`}
+              >
+                Все
+              </button>
+
+              {!isTeacherMode && (
+                <button
+                  onClick={() => setFilterType('homework')}
+                  className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                    filterType === 'homework'
+                      ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                      : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                  }`}
+                >
+                  ДЗ
+                </button>
+              )}
+
+              <button
+                onClick={() => setFilterType('note')}
+                className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  filterType === 'note'
+                    ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                    : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                }`}
+              >
+                Заметки
+              </button>
+
+              {!isTeacherMode && (
+                <button
+                  onClick={() => setFilterType('debts')}
+                  className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                    filterType === 'debts'
+                      ? 'bg-red-500/20 text-red-600 font-bold shadow-sm'
+                      : 'text-red-500 hover:text-red-600'
+                  }`}
+                >
+                  <span>Долги</span>
+                  {debts.length > 0 && (
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                        filterType === 'debts'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-red-500 text-white'
+                      }`}
+                    >
+                      {debts.length}
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+          }
+        />
       </div>
 
       <div className="p-3 space-y-3 flex-1 flex flex-col">
-        {/* Filter Chips (Все, ДЗ, Заметки, Долги) */}
-        <div data-no-swipe="true" className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setFilterType('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              filterType === 'all'
-                ? 'bg-[var(--nika-subject)] text-[var(--md-on-primary)] shadow-sm'
-                : 'bg-[var(--md-surface)] border border-[var(--md-border)] text-[var(--md-text-secondary)]'
-            }`}
-          >
-            Все
-          </button>
-
-          {!isTeacherMode && (
-            <button
-              onClick={() => setFilterType('homework')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                filterType === 'homework'
-                  ? 'bg-[var(--nika-subject)] text-[var(--md-on-primary)] shadow-sm'
-                  : 'bg-[var(--md-surface)] border border-[var(--md-border)] text-[var(--md-text-secondary)]'
-              }`}
-            >
-              ДЗ
-            </button>
-          )}
-
-        <button
-          onClick={() => setFilterType('note')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-            filterType === 'note'
-              ? 'bg-[var(--nika-subject)] text-[var(--md-on-primary)] shadow-sm'
-              : 'bg-[var(--md-surface)] border border-[var(--md-border)] text-[var(--md-text-secondary)]'
-          }`}
-        >
-          Заметки
-        </button>
-
-        {!isTeacherMode && (
-          <button
-            onClick={() => setFilterType('debts')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-              filterType === 'debts'
-                ? 'bg-red-500 text-white shadow-sm'
-                : 'bg-[var(--md-surface)] border border-[var(--md-border)] text-[var(--md-text-secondary)]'
-            }`}
-          >
-            <span>Долги</span>
-            {debts.length > 0 && (
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  filterType === 'debts'
-                    ? 'bg-white text-red-600'
-                    : 'bg-red-500 text-white'
-                }`}
-              >
-                {debts.length}
-              </span>
-            )}
-          </button>
-        )}
-      </div>
-
-      {/* Notes List */}
+        {/* Notes List */}
       {filteredNotes.length === 0 ? (
         <div className="py-20 text-center bg-[var(--md-surface)] rounded-3xl border border-[var(--md-border)] p-6">
           <p className="font-bold text-sm text-[var(--md-text-primary)]">
