@@ -160,10 +160,10 @@ export const NotesPage: React.FC = () => {
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
             <button
               onClick={() => setFilterType('all')}
-              className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
                 filterType === 'all'
-                  ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                  : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                  ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                  : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
               }`}
             >
               Все
@@ -172,10 +172,10 @@ export const NotesPage: React.FC = () => {
             {!isTeacherMode && (
               <button
                 onClick={() => setFilterType('homework')}
-                className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
                   filterType === 'homework'
-                    ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                    : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                    ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                    : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
                 }`}
               >
                 ДЗ
@@ -184,10 +184,10 @@ export const NotesPage: React.FC = () => {
 
             <button
               onClick={() => setFilterType('note')}
-              className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
                 filterType === 'note'
-                  ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                  : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                  ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                  : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
               }`}
             >
               Заметки
@@ -196,10 +196,10 @@ export const NotesPage: React.FC = () => {
             {!isTeacherMode && (
               <button
                 onClick={() => setFilterType('debts')}
-                className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all border ${
                   filterType === 'debts'
-                    ? 'bg-red-500/20 text-red-600 font-bold shadow-sm'
-                    : 'text-red-500 hover:text-red-600'
+                    ? 'bg-red-500/20 border-red-500/50 text-red-600 dark:text-red-400 font-bold shadow-sm'
+                    : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
                 }`}
               >
                 <span>Долги</span>
@@ -233,7 +233,7 @@ export const NotesPage: React.FC = () => {
         {/* Notes List */}
         {filteredNotes.length === 0 ? (
           <div className="flex-1 flex items-center justify-center py-24 px-4">
-            <p className="text-sm text-[var(--md-text-muted)] text-center">
+            <p className="text-sm font-medium text-[var(--md-text-secondary)] text-center">
               {filterType === 'debts'
                 ? 'Долгов нет! Все задания выполнены.'
                 : filterType === 'homework'
@@ -412,7 +412,7 @@ export const NotesPage: React.FC = () => {
           setEditingNote(null);
           setIsDialogOpen(true);
         }}
-        className="fixed bottom-20 right-5 z-30 w-14 h-14 rounded-full bg-[var(--nika-subject)] text-[var(--md-on-primary)] shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        className="fixed bottom-24 right-5 z-30 w-14 h-14 rounded-2xl bg-[var(--nika-subject)] text-[var(--md-on-primary)] shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
         title="Создать заметку или ДЗ"
       >
         <Plus className="w-7 h-7" />

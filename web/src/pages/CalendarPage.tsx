@@ -268,7 +268,7 @@ export const CalendarPage: React.FC = () => {
             <div
               key={d}
               className={`text-[11px] font-bold ${
-                idx === 6 ? 'text-red-500' : idx === 5 ? 'text-[#00875A] dark:text-[#28C76F]' : 'text-[var(--md-text-muted)]'
+                idx === 6 ? 'text-red-500' : idx === 5 ? 'text-[var(--md-secondary)]' : 'text-[var(--md-text-muted)]'
               }`}
             >
               {d}
@@ -303,7 +303,7 @@ export const CalendarPage: React.FC = () => {
               : isSunday
               ? 'bg-red-500/10 border-red-500/20'
               : isSaturday
-              ? 'bg-green-500/10 border-green-500/20'
+              ? 'bg-[var(--md-secondary-container)]/35 border-[var(--md-secondary)]/40'
               : 'bg-[var(--md-surface-variant)]/30 border-[var(--md-border-light)]/60';
 
             const textColor = isSelected
@@ -337,7 +337,7 @@ export const CalendarPage: React.FC = () => {
                           : isSunday
                           ? 'bg-red-500'
                           : isSaturday
-                          ? 'bg-[#00875A] dark:bg-[#28C76F]'
+                          ? 'bg-[var(--md-secondary)]'
                           : 'bg-black dark:bg-white opacity-80'
                       }`}
                     />
@@ -440,10 +440,10 @@ export const CalendarPage: React.FC = () => {
       <div data-no-swipe="true" className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         <button
           onClick={() => setSelectedCategory(null)}
-          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
             selectedCategory === null
-              ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-              : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+              ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
+              : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
           }`}
         >
           Все
@@ -454,10 +454,10 @@ export const CalendarPage: React.FC = () => {
             onClick={() =>
               setSelectedCategory(selectedCategory === 'CAT_HW' ? null : 'CAT_HW')
             }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
               selectedCategory === 'CAT_HW'
-                ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
             }`}
           >
             ДЗ
@@ -468,10 +468,10 @@ export const CalendarPage: React.FC = () => {
           onClick={() =>
             setSelectedCategory(selectedCategory === 'CAT_NOTES' ? null : 'CAT_NOTES')
           }
-          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
             selectedCategory === 'CAT_NOTES'
-              ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-              : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+              ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
+              : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
           }`}
         >
           Заметки
@@ -482,10 +482,10 @@ export const CalendarPage: React.FC = () => {
             onClick={() =>
               setSelectedCategory(selectedCategory === 'CAT_DEBTS' ? null : 'CAT_DEBTS')
             }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
               selectedCategory === 'CAT_DEBTS'
-                ? 'bg-red-500/20 text-red-600 font-bold shadow-sm'
-                : 'text-red-500 hover:text-red-600'
+                ? 'bg-red-500/20 border-red-500/50 text-red-600 dark:text-red-400 font-bold shadow-sm'
+                : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
             }`}
           >
             Долги ({debtsCount})
@@ -499,10 +499,10 @@ export const CalendarPage: React.FC = () => {
             onClick={() =>
               setSelectedCategory(selectedCategory === cat.color ? null : cat.color)
             }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
               selectedCategory === cat.color
-                ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
             }`}
           >
             {cat.title}
@@ -636,42 +636,46 @@ export const CalendarPage: React.FC = () => {
             })}
 
             {/* Lyceum Events */}
-            {displayedEvents.map((ev, idx) => (
-              <div
-                key={`event_${idx}`}
-                className="p-3 bg-[var(--md-surface)] border border-[var(--md-border-light)] rounded-xl flex items-center justify-between gap-3 shadow-xs"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{
-                      backgroundColor:
-                        ev.color === 'blue'
-                          ? '#2563EB'
-                          : ev.color === 'orange'
-                          ? '#D97706'
-                          : ev.color === 'red'
-                          ? '#DC2626'
-                          : '#059669',
-                    }}
-                  />
-                  <div>
-                    <h4 className="font-bold text-xs sm:text-sm text-[var(--md-text-primary)]">
-                      {ev.title}
-                    </h4>
-                    {ev.sourceLabel && (
-                      <p className="text-[11px] text-[var(--md-text-muted)]">
-                        {ev.sourceLabel}
+            {displayedEvents.map((ev, idx) => {
+              const label =
+                ev.sourceLabel &&
+                !ev.sourceLabel.toLowerCase().includes('файл') &&
+                !ev.sourceLabel.toLowerCase().includes('сайт')
+                  ? ev.sourceLabel
+                  : null;
+              const dateSubtitle = label ? `${ev.date} • ${label}` : ev.date;
+
+              return (
+                <div
+                  key={`event_${idx}`}
+                  className="p-3 bg-[var(--md-surface)] border border-[var(--md-border-light)] rounded-xl flex items-center justify-between gap-3 shadow-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor:
+                          ev.color === 'blue'
+                            ? '#2563EB'
+                            : ev.color === 'orange'
+                            ? '#D97706'
+                            : ev.color === 'red'
+                            ? '#DC2626'
+                            : '#059669',
+                      }}
+                    />
+                    <div>
+                      <h4 className="font-bold text-xs sm:text-sm text-[var(--md-text-primary)]">
+                        {ev.title}
+                      </h4>
+                      <p className="text-[11px] text-[var(--md-text-muted)] mt-0.5">
+                        {dateSubtitle}
                       </p>
-                    )}
+                    </div>
                   </div>
                 </div>
-
-                <span className="text-xs font-semibold text-[var(--nika-subject)] shrink-0">
-                  {ev.date}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </>
         )}
       </div>
