@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
 const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
 
 const BASE_URL = 'https://lyceum.nstu.ru/info/api';
+const PROXY_BASE = 'https://lyceum-proxy.dimafilippov1800.workers.dev/proxy-url?url=';
 const DATA_DIR = path.resolve(__dirname, '../web/public/data');
 
 const ALL_KNOWN_ROOMS = [
@@ -21,27 +21,41 @@ function ensureDir(dir) {
   }
 }
 
-function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, {
+async function fetchUrl(url, timeoutMs = 6000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
       headers: {
         'User-Agent': 'ScheduleXY-Sync/1.0 (GitHub Actions)'
       }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error(`Failed to parse JSON from ${url}: ${e.message}`));
-        }
-      });
-    }).on('error', reject);
-  });
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-function sendPush(className, message) {
+async function fetchJson(url) {
+  try {
+    // Try direct connection with 4s timeout
+    return await fetchUrl(url, 4000);
+  } catch (directErr) {
+    // Fallback to Cloudflare Worker proxy with 8s timeout
+    try {
+      const proxyUrl = `${PROXY_BASE}${encodeURIComponent(url)}`;
+      return await fetchUrl(proxyUrl, 8000);
+    } catch (proxyErr) {
+      throw new Error(`Direct failed (${directErr.message}), Proxy failed (${proxyErr.message}) for ${url}`);
+    }
+  }
+}
+
+async function sendPush(className, message) {
   if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
     return;
   }
@@ -59,18 +73,23 @@ function sendPush(className, message) {
     ? (ONESIGNAL_API_KEY.startsWith('os_v2_') ? `Key ${ONESIGNAL_API_KEY}` : ONESIGNAL_API_KEY)
     : `Basic ${ONESIGNAL_API_KEY}`;
 
-  const req = https.request('https://onesignal.com/api/v1/notifications', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': authHeader
-    }
-  }, (res) => {
-    console.log(`Push sent for ${className}: status ${res.statusCode}`);
-  });
-  req.on('error', (err) => console.error(`Error sending push for ${className}:`, err.message));
-  req.write(payload);
-  req.end();
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader
+      },
+      body: payload,
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    console.log(`Push sent for ${className}: status ${res.status}`);
+  } catch (err) {
+    console.error(`Error sending push for ${className}:`, err.message);
+  }
 }
 
 async function sleep(ms) {
