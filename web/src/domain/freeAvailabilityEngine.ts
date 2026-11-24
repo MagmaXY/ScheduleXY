@@ -2,9 +2,10 @@ import {
   FreeRoomsResponse,
   FreeTeachersResponse,
   RoomSlotAvailability,
+  ScheduleChanges,
   ScheduleResponse,
   TeacherItem,
-  getChangeForLesson,
+  getChangesForLesson,
   isCancelledLesson,
   normalizeSubject,
 } from '../types/api';
@@ -61,7 +62,9 @@ export function computeSlotAvailability(
   allClassSchedules: ScheduleResponse[],
   allTeachers: TeacherItem[],
   dayIndex: number,
-  lessonNum: number
+  lessonNum: number,
+  globalChanges?: ScheduleChanges | null,
+  globalWeekStart?: string | null
 ): SlotOccupancy {
   const busyRooms: Record<string, string> = {};
   const busyTeachers: Record<string, string> = {};
@@ -70,45 +73,131 @@ export function computeSlotAvailability(
   for (const schedule of allClassSchedules) {
     const className = schedule.className;
     if (!className) continue;
-    const day = schedule.days.find((d) => d.dayIndex === dayIndex);
-    if (!day) continue;
-    const lesson = day.lessons.find((l) => l.num === lessonNum);
-    if (!lesson) continue;
 
-    const change = getChangeForLesson(schedule, dayIndex, lessonNum);
-    if (change) {
-      if (isCancelledLesson(change)) {
+    const schedWithChanges: ScheduleResponse = {
+      ...schedule,
+      weekStart: schedule.weekStart || globalWeekStart || undefined,
+      changes: schedule.changes || globalChanges || undefined,
+    };
+
+    const changes = getChangesForLesson(schedWithChanges, dayIndex, lessonNum);
+    const day = schedule.days?.find((d) => d.dayIndex === dayIndex);
+    const lesson = day?.lessons?.find((l) => l.num === lessonNum);
+
+    // If there are changes for this class at this lesson
+    if (changes.length > 0) {
+      const allCancelled = changes.every((c) => isCancelledLesson(c));
+      const hasGeneralCancel = changes.some(
+        (c) => isCancelledLesson(c) && (!c.group || c.group === '0')
+      );
+
+      if (allCancelled || hasGeneralCancel) {
+        // Lesson cancelled - class does not occupy any room or teacher
         continue;
       }
-      const repSubj = normalizeSubject(change.subject) || 'Занятие';
-      const repRoom = change.room?.trim();
-      const repTeacher = change.teacher?.trim();
 
-      if (repRoom) {
-        discoveredRooms.add(repRoom);
-        const info = `${className}: ${repSubj} (замена)`;
-        busyRooms[repRoom] = busyRooms[repRoom] ? `${busyRooms[repRoom]}, ${info}` : info;
+      let appliedChange = false;
+      for (const change of changes) {
+        if (isCancelledLesson(change)) continue;
+
+        const repSubj = normalizeSubject(change.subject) || 'Занятие';
+        const repRoom = change.room?.trim();
+        const repTeacher = change.teacher?.trim();
+
+        if (repRoom) {
+          discoveredRooms.add(repRoom);
+          const info = `${className}: ${repSubj} (замена)`;
+          busyRooms[repRoom] = busyRooms[repRoom]
+            ? `${busyRooms[repRoom]}, ${info}`
+            : info;
+          appliedChange = true;
+        }
+        if (repTeacher) {
+          const info = `${className}: ${repSubj} ${
+            repRoom ? `(${repRoom})` : ''
+          } (замена)`.trim();
+          busyTeachers[repTeacher] = busyTeachers[repTeacher]
+            ? `${busyTeachers[repTeacher]}, ${info}`
+            : info;
+          appliedChange = true;
+        }
       }
-      if (repTeacher) {
-        const info = `${className}: ${repSubj} ${repRoom ? `(${repRoom})` : ''} (замена)`.trim();
-        busyTeachers[repTeacher] = busyTeachers[repTeacher] ? `${busyTeachers[repTeacher]}, ${info}` : info;
+
+      const hasGeneralChange = changes.some((c) => !c.group || c.group === '0');
+      if (hasGeneralChange || appliedChange) {
+        continue;
       }
-      continue;
     }
 
-    for (const subgroup of lesson.subgroups) {
-      const subject = normalizeSubject(subgroup.subject) || 'Занятие';
-      const room = subgroup.room?.trim();
-      if (room) {
-        discoveredRooms.add(room);
-        const info = `${className}: ${subject}`;
-        busyRooms[room] = busyRooms[room] ? `${busyRooms[room]}, ${info}` : info;
-      }
+    // Normal timetable lesson
+    if (lesson) {
+      for (const subgroup of lesson.subgroups) {
+        const subject = normalizeSubject(subgroup.subject) || 'Занятие';
+        const room = subgroup.room?.trim();
+        if (room) {
+          discoveredRooms.add(room);
+          const info = `${className}: ${subject}`;
+          busyRooms[room] = busyRooms[room] ? `${busyRooms[room]}, ${info}` : info;
+        }
 
-      const teacher = subgroup.teacher?.trim();
-      if (teacher) {
-        const info = `${className}: ${subject} ${room ? `(${room})` : ''}`.trim();
-        busyTeachers[teacher] = busyTeachers[teacher] ? `${busyTeachers[teacher]}, ${info}` : info;
+        const teacher = subgroup.teacher?.trim();
+        if (teacher) {
+          const info = `${className}: ${subject} ${
+            room ? `(${room})` : ''
+          }`.trim();
+          busyTeachers[teacher] = busyTeachers[teacher]
+            ? `${busyTeachers[teacher]}, ${info}`
+            : info;
+        }
+      }
+    }
+  }
+
+  // Also apply direct teacher changes if any (e.g. consultations or substitute assignments)
+  const teacherChanges = globalChanges?.teacher;
+  if (teacherChanges && globalWeekStart) {
+    const parts = globalWeekStart.split('-');
+    if (parts.length >= 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      d.setDate(d.getDate() + dayIndex);
+      const dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(
+        d.getMonth() + 1
+      ).padStart(2, '0')}.${d.getFullYear()}`;
+
+      for (const [key, item] of Object.entries(teacherChanges)) {
+        const keyParts = key.split('|');
+        const keyTeacher = keyParts[0]?.trim();
+        const keyDate = keyParts[1]?.trim();
+        const keyNum = keyParts[2] ? parseInt(keyParts[2].trim(), 10) : null;
+
+        const matchesDate = keyDate === dateStr || item.dateStr === dateStr;
+        const matchesNum = keyNum === lessonNum || item.lessonNum === lessonNum;
+
+        if (matchesDate && matchesNum && !isCancelledLesson(item)) {
+          const teacherName = item.teacher?.trim() || keyTeacher;
+          const room = item.room?.trim();
+          const subj = normalizeSubject(item.subject) || 'Занятие';
+          const cls = item.className?.trim() || '';
+
+          if (room && !busyRooms[room]?.includes('(замена)')) {
+            discoveredRooms.add(room);
+            const info = `${cls ? `${cls}: ` : ''}${subj} (замена)`;
+            busyRooms[room] = busyRooms[room]
+              ? `${busyRooms[room]}, ${info}`
+              : info;
+          }
+          if (teacherName && !busyTeachers[teacherName]?.includes('(замена)')) {
+            const info = `${cls ? `${cls}: ` : ''}${subj} ${
+              room ? `(${room})` : ''
+            } (замена)`.trim();
+            busyTeachers[teacherName] = busyTeachers[teacherName]
+              ? `${busyTeachers[teacherName]}, ${info}`
+              : info;
+          }
+        }
       }
     }
   }
@@ -135,7 +224,9 @@ export function computeSlotAvailability(
 }
 
 export function generateFullLocalFreeRooms(
-  allClassSchedules: ScheduleResponse[]
+  allClassSchedules: ScheduleResponse[],
+  globalChanges?: ScheduleChanges | null,
+  globalWeekStart?: string | null
 ): FreeRoomsResponse {
   const roomsMap: Record<string, RoomSlotAvailability> = {};
   const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -148,7 +239,14 @@ export function generateFullLocalFreeRooms(
   for (let dIdx = 0; dIdx < 6; dIdx++) {
     const dName = days[dIdx];
     for (let num = 1; num <= 12; num++) {
-      const slot = computeSlotAvailability(allClassSchedules, [], dIdx, num);
+      const slot = computeSlotAvailability(
+        allClassSchedules,
+        [],
+        dIdx,
+        num,
+        globalChanges,
+        globalWeekStart
+      );
       const key = `${dName}|${num}`;
       roomsMap[key] = {
         busy: Object.keys(slot.busyRooms).sort(),
@@ -166,7 +264,9 @@ export function generateFullLocalFreeRooms(
 
 export function generateFullLocalFreeTeachers(
   allClassSchedules: ScheduleResponse[],
-  allTeachers: TeacherItem[]
+  allTeachers: TeacherItem[],
+  globalChanges?: ScheduleChanges | null,
+  globalWeekStart?: string | null
 ): FreeTeachersResponse {
   const teachersMap: Record<string, string[]> = {};
   const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -179,7 +279,14 @@ export function generateFullLocalFreeTeachers(
   for (let dIdx = 0; dIdx < 6; dIdx++) {
     const dName = days[dIdx];
     for (let num = 1; num <= 12; num++) {
-      const slot = computeSlotAvailability(allClassSchedules, allTeachers, dIdx, num);
+      const slot = computeSlotAvailability(
+        allClassSchedules,
+        allTeachers,
+        dIdx,
+        num,
+        globalChanges,
+        globalWeekStart
+      );
       const key = `${dName}|${num}`;
       teachersMap[key] = slot.freeTeachers;
     }

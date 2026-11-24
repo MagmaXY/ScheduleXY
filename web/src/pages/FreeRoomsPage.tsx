@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { lyceumApi } from '../api/endpoints';
 import { scheduleRepository } from '../api/scheduleRepository';
+import { ScheduleResponse } from '../types/api';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { useScheduleStore } from '../store/scheduleStore';
 import {
@@ -59,57 +59,53 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
 
   const isTeachersUnlocked = adminPassword === 'licey2026';
 
-  const [cachedGrid, setCachedGrid] = useState<Record<string, SlotOccupancy> | null>(null);
+  const currentSchedule = useScheduleStore((s) => s.currentSchedule);
+  const [allClassSchedules, setAllClassSchedules] = useState<ScheduleResponse[] | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
-
-    async function loadData() {
-      setIsLoading(true);
-      try {
-        // Fast path: load pre-calculated availability table (instant < 20ms)
-        let grid = cachedGrid;
-        if (!grid) {
-          try {
-            grid = await lyceumApi.getAvailabilityGrid();
-            if (!isCancelled && grid) {
-              setCachedGrid(grid);
-            }
-          } catch {
-            // fallback to client-side compute
-          }
+    setIsLoading(true);
+    scheduleRepository
+      .prefetchAllClasses()
+      .then((schedules) => {
+        if (!isCancelled) {
+          setAllClassSchedules(schedules);
         }
-
-        const slotKey = `${selectedDay}_${selectedLesson}`;
-        if (grid && grid[slotKey]) {
-          setOccupancy(grid[slotKey]);
-          setIsLoading(false);
-          return;
-        }
-
-        // Fallback: calculate on client
-        const allClassSchedules = await scheduleRepository.prefetchAllClasses();
-        if (isCancelled) return;
-
-        const slot = computeSlotAvailability(
-          allClassSchedules,
-          teachersList,
-          selectedDay,
-          selectedLesson
-        );
-        setOccupancy(slot);
-      } catch {
-        // ignore
-      } finally {
+      })
+      .catch(() => {})
+      .finally(() => {
         if (!isCancelled) setIsLoading(false);
-      }
-    }
+      });
 
-    loadData();
     return () => {
       isCancelled = true;
     };
-  }, [selectedDay, selectedLesson, teachersList, cachedGrid]);
+  }, []);
+
+  useEffect(() => {
+    if (!allClassSchedules || allClassSchedules.length === 0) return;
+
+    const globalChanges =
+      currentSchedule?.changes ||
+      allClassSchedules.find(
+        (s) => s.changes && Object.keys(s.changes.class || {}).length > 0
+      )?.changes ||
+      null;
+    const globalWeekStart =
+      currentSchedule?.weekStart ||
+      allClassSchedules.find((s) => s.weekStart)?.weekStart ||
+      null;
+
+    const slot = computeSlotAvailability(
+      allClassSchedules,
+      teachersList,
+      selectedDay,
+      selectedLesson,
+      globalChanges,
+      globalWeekStart
+    );
+    setOccupancy(slot);
+  }, [selectedDay, selectedLesson, allClassSchedules, teachersList, currentSchedule]);
 
   const freeRooms = occupancy?.freeRooms || [];
   const busyRooms = Object.entries(occupancy?.busyRooms || {}).sort((a, b) =>

@@ -233,7 +233,7 @@ export const NotesPage: React.FC = () => {
         {/* Notes List */}
         {filteredNotes.length === 0 ? (
           <div className="flex-1 flex items-center justify-center py-24 px-4">
-            <p className="text-sm font-medium text-[var(--md-text-secondary)] text-center">
+            <p className="text-sm font-medium text-[var(--md-border)] text-center">
               {filterType === 'debts'
                 ? 'Долгов нет! Все задания выполнены.'
                 : filterType === 'homework'

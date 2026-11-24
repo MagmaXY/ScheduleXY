@@ -440,10 +440,10 @@ export const CalendarPage: React.FC = () => {
       <div data-no-swipe="true" className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         <button
           onClick={() => setSelectedCategory(null)}
-          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
+          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
             selectedCategory === null
-              ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
-              : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
+              ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+              : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
           }`}
         >
           Все
@@ -454,10 +454,10 @@ export const CalendarPage: React.FC = () => {
             onClick={() =>
               setSelectedCategory(selectedCategory === 'CAT_HW' ? null : 'CAT_HW')
             }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
+            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
               selectedCategory === 'CAT_HW'
-                ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
+                ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
             }`}
           >
             ДЗ
@@ -468,10 +468,10 @@ export const CalendarPage: React.FC = () => {
           onClick={() =>
             setSelectedCategory(selectedCategory === 'CAT_NOTES' ? null : 'CAT_NOTES')
           }
-          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
+          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
             selectedCategory === 'CAT_NOTES'
-              ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
-              : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
+              ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+              : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
           }`}
         >
           Заметки
@@ -482,10 +482,10 @@ export const CalendarPage: React.FC = () => {
             onClick={() =>
               setSelectedCategory(selectedCategory === 'CAT_DEBTS' ? null : 'CAT_DEBTS')
             }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
+            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
               selectedCategory === 'CAT_DEBTS'
-                ? 'bg-red-500/20 border-red-500/50 text-red-600 dark:text-red-400 font-bold shadow-sm'
-                : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
+                ? 'bg-red-500/20 text-red-600 dark:text-red-400 font-bold shadow-sm'
+                : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
             }`}
           >
             Долги ({debtsCount})
@@ -499,10 +499,10 @@ export const CalendarPage: React.FC = () => {
             onClick={() =>
               setSelectedCategory(selectedCategory === cat.color ? null : cat.color)
             }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
+            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
               selectedCategory === cat.color
-                ? 'bg-[var(--md-surface-variant)] border-[var(--md-border)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                : 'border-[var(--md-border)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
+                ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
             }`}
           >
             {cat.title}
@@ -529,10 +529,12 @@ export const CalendarPage: React.FC = () => {
         </div>
 
         {displayedNotes.length === 0 && displayedEvents.length === 0 ? (
-          <div className="p-4 text-center text-xs text-[var(--md-text-muted)] bg-[var(--md-surface)] border border-[var(--md-border)] rounded-2xl">
-            {searchQuery.trim()
-              ? `По запросу «${searchQuery}» ничего не найдено`
-              : 'В выбранной категории записей не найдено'}
+          <div className="py-12 px-4 text-center">
+            <p className="text-sm font-medium text-[var(--md-border)]">
+              {searchQuery.trim()
+                ? `По запросу «${searchQuery}» ничего не найдено`
+                : 'В выбранной категории записей не найдено'}
+            </p>
           </div>
         ) : (
           <>

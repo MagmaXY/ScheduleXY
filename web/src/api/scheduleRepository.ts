@@ -203,7 +203,11 @@ export const scheduleRepository = {
       return await lyceumApi.getFreeRooms(adminPassword || 'licey2026');
     } catch {
       const allClassSchedules = await this.prefetchAllClasses();
-      return generateFullLocalFreeRooms(allClassSchedules);
+      const globalChanges = allClassSchedules.find(
+        (s) => s.changes && Object.keys(s.changes.class || {}).length > 0
+      )?.changes;
+      const globalWeekStart = allClassSchedules.find((s) => s.weekStart)?.weekStart;
+      return generateFullLocalFreeRooms(allClassSchedules, globalChanges, globalWeekStart);
     }
   },
 
@@ -217,7 +221,16 @@ export const scheduleRepository = {
     } catch {
       const teachers = (await this.getTeachers()).items;
       const allClassSchedules = await this.prefetchAllClasses();
-      return generateFullLocalFreeTeachers(allClassSchedules, teachers);
+      const globalChanges = allClassSchedules.find(
+        (s) => s.changes && Object.keys(s.changes.class || {}).length > 0
+      )?.changes;
+      const globalWeekStart = allClassSchedules.find((s) => s.weekStart)?.weekStart;
+      return generateFullLocalFreeTeachers(
+        allClassSchedules,
+        teachers,
+        globalChanges,
+        globalWeekStart
+      );
     }
   },
 
