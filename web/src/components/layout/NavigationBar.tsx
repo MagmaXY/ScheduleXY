@@ -24,7 +24,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
 
 export const NavigationBar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--md-surface)]/95 backdrop-blur-lg border-t border-[var(--md-border)] safe-bottom lg:hidden transition-colors">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--md-surface)] border-t border-[var(--md-border-light)] safe-bottom lg:hidden transition-colors">
       <div className="flex items-center justify-around h-20 max-w-lg mx-auto px-2 py-2">
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -58,8 +58,11 @@ export const NavigationBar: React.FC<Props> = ({ currentTab, onSelectTab }) => {
 
 export const NavigationRail: React.FC<Props> = ({ currentTab, onSelectTab }) => {
   return (
-    <aside className="hidden lg:flex flex-col items-center w-20 bg-[var(--md-surface)] border-r border-[var(--md-border)] pt-8 pb-10 gap-6 shrink-0 safe-top">
-      <div className="flex flex-col items-center gap-4 w-full">
+    <aside
+      className="hidden lg:flex flex-col items-center w-20 bg-[var(--md-surface)] border-r border-[var(--md-border-light)] pb-10 gap-6 shrink-0 transition-colors"
+      style={{ paddingTop: 'max(1.75rem, var(--safe-area-top))' }}
+    >
+      <div className="flex flex-col items-center gap-4 w-full pt-1">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isSelected = currentTab === tab.key;

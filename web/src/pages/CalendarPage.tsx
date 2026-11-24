@@ -237,37 +237,37 @@ export const CalendarPage: React.FC = () => {
   return (
     <div
       {...swipeHandlers}
-      className="max-w-4xl mx-auto px-4 py-3 space-y-3 min-h-screen lg:border-x border-[var(--md-border-light)]"
+      className="max-w-4xl mx-auto flex flex-col min-h-screen bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
     >
-      {/* Month Navigation Header (Centered with arrows on sides, matching Android) */}
-      <div className="flex items-center justify-between px-1 py-1">
-        <button
-          onClick={prevMonth}
-          className="p-2 rounded-xl text-[var(--md-text-muted)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/60 transition-all"
-          title="Предыдущий месяц"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <h2 className="font-bold text-base sm:text-lg text-[var(--md-text-primary)] text-center capitalize">
-          {monthNames[month]} {year}
-        </h2>
-        <button
-          onClick={nextMonth}
-          className="p-2 rounded-xl text-[var(--md-text-muted)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/60 transition-all"
-          title="Следующий месяц"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
+      {/* 1. Unified Surface Header: Month Navigation & Days of Week */}
+      <div className="bg-[var(--md-surface)] border-b border-[var(--md-border-light)] transition-colors">
+        {/* Month Navigation Row */}
+        <div className="flex items-center justify-between px-3 py-1.5">
+          <button
+            onClick={prevMonth}
+            className="p-1.5 rounded-lg text-[var(--md-text-secondary)] hover:bg-[var(--md-surface-variant)] transition-colors"
+            title="Предыдущий месяц"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="font-bold text-sm sm:text-base text-[var(--md-text-primary)] text-center capitalize">
+            {monthNames[month]} {year}
+          </h2>
+          <button
+            onClick={nextMonth}
+            className="p-1.5 rounded-lg text-[var(--md-text-secondary)] hover:bg-[var(--md-surface-variant)] transition-colors"
+            title="Следующий месяц"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
 
-      {/* Calendar Grid Container */}
-      <div className="bg-[var(--md-surface)] border border-[var(--md-border)] rounded-2xl p-2.5 shadow-sm">
-        {/* Days of week header */}
-        <div className="grid grid-cols-7 gap-1 text-center mb-1">
+        {/* Days of week header under month row */}
+        <div className="grid grid-cols-7 px-2 pb-2 text-center">
           {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d, idx) => (
             <div
               key={d}
-              className={`text-[12px] font-bold ${
+              className={`text-[11px] font-bold ${
                 idx === 6 ? 'text-red-500' : idx === 5 ? 'text-[#00875A] dark:text-[#28C76F]' : 'text-[var(--md-text-muted)]'
               }`}
             >
@@ -275,8 +275,10 @@ export const CalendarPage: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Calendar days cells */}
+      {/* 2. Calendar Grid Container: unrounded rectangle across full width, borderless except bottom divider */}
+      <div className="w-full bg-[var(--md-surface)] border-b border-[var(--md-border-light)] px-2 py-1.5 transition-colors">
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: startDayOfWeek }).map((_, i) => (
             <div key={`empty-${i}`} className="aspect-[1.15] w-full" />
@@ -325,13 +327,17 @@ export const CalendarPage: React.FC = () => {
                   {dayNum}
                 </span>
 
-                {/* Monochrome black/white dots strictly under theme colors (2x smaller) */}
+                {/* Dot markers strictly under day number */}
                 <div className="flex items-center gap-1 mt-1 h-1.5">
                   {dayEvents.length > 0 && (
                     <span
-                      className={`w-[3px] h-[3px] rounded-full ${
+                      className={`w-[4px] h-[4px] rounded-full ${
                         isSelected
                           ? 'bg-[var(--md-on-primary)]'
+                          : isSunday
+                          ? 'bg-red-500'
+                          : isSaturday
+                          ? 'bg-[#00875A] dark:bg-[#28C76F]'
                           : 'bg-black dark:bg-white opacity-80'
                       }`}
                     />
@@ -351,6 +357,8 @@ export const CalendarPage: React.FC = () => {
           })}
         </div>
       </div>
+
+      <div className="p-3 space-y-3 flex-1 flex flex-col pb-24">
 
       {/* Archive weeks available in this month */}
       {archiveWeeksInMonth.length > 0 && (
@@ -631,11 +639,11 @@ export const CalendarPage: React.FC = () => {
             {displayedEvents.map((ev, idx) => (
               <div
                 key={`event_${idx}`}
-                className="p-3 bg-[var(--md-surface)] border border-[var(--md-border)] rounded-2xl flex items-center justify-between gap-3 shadow-sm"
+                className="p-3 bg-[var(--md-surface)] border border-[var(--md-border-light)] rounded-xl flex items-center justify-between gap-3 shadow-xs"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <span
-                    className="w-2.5 h-10 rounded-full shrink-0"
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{
                       backgroundColor:
                         ev.color === 'blue'
@@ -666,6 +674,7 @@ export const CalendarPage: React.FC = () => {
             ))}
           </>
         )}
+      </div>
       </div>
 
       {/* Note Edit Dialog */}

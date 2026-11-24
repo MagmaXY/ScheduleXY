@@ -4,7 +4,7 @@ import { usePreferencesStore } from '../store/preferencesStore';
 import { useScheduleStore } from '../store/scheduleStore';
 import { TargetSelector } from '../components/schedule/TargetSelector';
 import { NoteEditDialog } from '../components/notes/NoteEditDialog';
-import { Plus, CheckCircle2, Circle, Trash2, Calendar, Clock } from 'lucide-react';
+import { Plus, Check, Edit3, Trash2, Clock } from 'lucide-react';
 import { ScheduleNote } from '../types/notes';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { toLocalDateIso } from '../utils/dateUtils';
@@ -30,6 +30,7 @@ export const NotesPage: React.FC = () => {
   const updateNote = useNotesStore((s) => s.updateNote);
   const deleteNote = useNotesStore((s) => s.deleteNote);
   const toggleCompleted = useNotesStore((s) => s.toggleCompleted);
+  const cleanupOldCompleted = useNotesStore((s) => s.cleanupOldCompleted);
   const transferHomework = useNotesStore((s) => s.transferHomework);
   const markTransferPending = useNotesStore((s) => s.markTransferPending);
   const updateNotes = useNotesStore((s) => s.updateNotes);
@@ -42,6 +43,19 @@ export const NotesPage: React.FC = () => {
 
   // Target-filtered notes
   const targetNotes = notes.filter((n) => n.targetName === targetName);
+  const completedCount = targetNotes.filter((n) => n.isCompleted).length;
+
+  const formatDateWithDay = (dateStr: string): string => {
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      const dayNames = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+      const monthNames = ['янв.', 'февр.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
+      return `${d} ${monthNames[date.getMonth()]}, ${dayNames[date.getDay()]}`;
+    } catch {
+      return dateStr;
+    }
+  };
 
   // Debts: Overdue uncompleted homework or transferPending homework
   const debts = targetNotes.filter(
@@ -137,226 +151,259 @@ export const NotesPage: React.FC = () => {
       {...swipeHandlers}
       className="max-w-4xl mx-auto flex flex-col min-h-screen bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
     >
-      {/* Target Selector Header - matched with Schedule and Archive */}
-      <div className="px-3 pt-2.5 pb-1.5 bg-[var(--md-surface)]">
-        <TargetSelector
-          onTargetChanged={() => loadSchedule()}
-          extraRight={
-            <div data-no-swipe="true" className="flex items-center gap-1.5 overflow-x-auto scrollbar-none ml-1">
+      {/* Top Unified Header Bar */}
+      <div className="bg-[var(--md-surface)] border-b border-[var(--md-border-light)] transition-colors">
+        <div className="px-3 pt-2.5 pb-1">
+          <TargetSelector onTargetChanged={() => loadSchedule()} />
+        </div>
+        <div data-no-swipe="true" className="flex items-center justify-between px-3 pb-2 pt-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                filterType === 'all'
+                  ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                  : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+              }`}
+            >
+              Все
+            </button>
+
+            {!isTeacherMode && (
               <button
-                onClick={() => setFilterType('all')}
+                onClick={() => setFilterType('homework')}
                 className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                  filterType === 'all'
+                  filterType === 'homework'
                     ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
                     : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
                 }`}
               >
-                Все
+                ДЗ
               </button>
+            )}
 
-              {!isTeacherMode && (
-                <button
-                  onClick={() => setFilterType('homework')}
-                  className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                    filterType === 'homework'
-                      ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                      : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
-                  }`}
-                >
-                  ДЗ
-                </button>
-              )}
+            <button
+              onClick={() => setFilterType('note')}
+              className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                filterType === 'note'
+                  ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                  : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+              }`}
+            >
+              Заметки
+            </button>
 
+            {!isTeacherMode && (
               <button
-                onClick={() => setFilterType('note')}
-                className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                  filterType === 'note'
-                    ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                    : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                onClick={() => setFilterType('debts')}
+                className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${
+                  filterType === 'debts'
+                    ? 'bg-red-500/20 text-red-600 font-bold shadow-sm'
+                    : 'text-red-500 hover:text-red-600'
                 }`}
               >
-                Заметки
+                <span>Долги</span>
+                {debts.length > 0 && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      filterType === 'debts'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-red-500 text-white'
+                    }`}
+                  >
+                    {debts.length}
+                  </span>
+                )}
               </button>
+            )}
+          </div>
 
-              {!isTeacherMode && (
-                <button
-                  onClick={() => setFilterType('debts')}
-                  className={`h-8 px-2.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${
-                    filterType === 'debts'
-                      ? 'bg-red-500/20 text-red-600 font-bold shadow-sm'
-                      : 'text-red-500 hover:text-red-600'
-                  }`}
-                >
-                  <span>Долги</span>
-                  {debts.length > 0 && (
-                    <span
-                      className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                        filterType === 'debts'
-                          ? 'bg-red-600 text-white'
-                          : 'bg-red-500 text-white'
-                      }`}
-                    >
-                      {debts.length}
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
-          }
-        />
+          {completedCount > 0 && (
+            <button
+              onClick={() => cleanupOldCompleted(0)}
+              className="text-xs text-[var(--nika-subject)] hover:underline whitespace-nowrap ml-2 font-medium"
+            >
+              Очистить сделанные
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-3 space-y-3 flex-1 flex flex-col">
         {/* Notes List */}
-      {filteredNotes.length === 0 ? (
-        <div className="py-20 text-center bg-[var(--md-surface)] rounded-3xl border border-[var(--md-border)] p-6">
-          <p className="font-bold text-sm text-[var(--md-text-primary)]">
-            {filterType === 'debts'
-              ? 'Задолженностей нет'
-              : 'Заметок не найдено'}
-          </p>
-          <p className="text-xs text-[var(--md-text-muted)] mt-1">
-            {filterType === 'debts'
-              ? 'Все домашние задания выполнены вовремя'
-              : 'Нажмите кнопку +, чтобы создать новое задание или заметку'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2.5 pb-24">
-          {filteredNotes.map((note) => {
-            const isPast = note.date < todayIso;
+        {filteredNotes.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center py-24 px-4">
+            <p className="text-sm text-[var(--md-text-muted)] text-center">
+              {filterType === 'debts'
+                ? 'Долгов нет! Все задания выполнены.'
+                : filterType === 'homework'
+                ? 'Нет актуальных домашних заданий.'
+                : filterType === 'note'
+                ? 'Нет заметок.'
+                : 'Записей пока нет. Нажмите +, чтобы добавить!'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5 pb-24">
+            {filteredNotes.map((note) => {
+              const isPast = note.date < todayIso;
+              const isDebt = note.type === 'homework' && !note.isCompleted && (isPast || note.transferPending);
+              const typeLabel =
+                note.type === 'homework'
+                  ? note.subject || 'ДЗ'
+                  : note.slotType === 'before_lessons'
+                  ? 'До уроков'
+                  : note.slotType === 'after_lessons'
+                  ? 'После уроков'
+                  : note.slotType === 'lesson'
+                  ? `Урок ${note.lessonNum || ''}`
+                  : 'Заметка';
 
-            return (
-              <div
-                key={note.id}
-                className={`p-3.5 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
-                  note.isCompleted
-                    ? 'bg-[var(--md-surface)]/60 border-[var(--md-border-light)] opacity-50'
-                    : note.type === 'homework' && isPast
-                    ? 'bg-red-500/10 border-red-500/30'
-                    : 'bg-[var(--md-surface)] border-[var(--md-border)] shadow-sm'
-                }`}
-              >
-                {/* Complete checkbox */}
-                <button
-                  onClick={() => toggleCompleted(note.id)}
-                  className="mt-0.5 text-[var(--nika-subject)] shrink-0"
-                >
-                  {note.isCompleted ? (
-                    <CheckCircle2 className="w-5 h-5 fill-[var(--nika-subject)] text-white" />
-                  ) : (
-                    <Circle className="w-5 h-5 text-[var(--md-text-muted)] hover:text-[var(--nika-subject)]" />
-                  )}
-                </button>
-
-                {/* Content */}
+              return (
                 <div
-                  className="flex-1 cursor-pointer"
-                  onClick={() => {
-                    setEditingNote(note);
-                    setIsDialogOpen(true);
-                  }}
+                  key={note.id}
+                  className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between gap-2.5 ${
+                    isDebt
+                      ? 'bg-red-500/10 border-red-500/30'
+                      : note.isCompleted
+                      ? 'bg-[var(--md-surface)]/60 border-[var(--md-border-light)] opacity-60'
+                      : 'bg-[var(--md-surface)] border-[var(--md-border-light)] shadow-xs'
+                  }`}
                 >
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span
-                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                        note.type === 'homework'
-                          ? isPast && !note.isCompleted
-                            ? 'bg-red-500 text-white'
-                            : 'bg-[var(--nika-active-bg)] text-[var(--nika-subject)]'
-                          : 'bg-[var(--md-surface-variant)] text-[var(--md-text-secondary)]'
-                      }`}
-                    >
-                      {note.type === 'homework' ? 'ДЗ' : 'Заметка'}
-                    </span>
-
-                    {note.subject && (
-                      <span className="font-bold text-xs text-[var(--md-text-primary)]">
-                        {note.subject}
+                  {/* Header Row: Type / Subject on Left, Date on Right */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className={`font-bold text-sm truncate ${
+                          isDebt
+                            ? 'text-red-500'
+                            : note.isCompleted
+                            ? 'text-[var(--md-text-muted)]'
+                            : 'text-[var(--md-text-primary)]'
+                        }`}
+                      >
+                        {typeLabel}
                       </span>
-                    )}
+                      {note.type === 'homework' && note.lessonNum && (
+                        <span className="text-xs text-[var(--md-text-muted)] shrink-0">
+                          ({note.lessonNum} урок)
+                        </span>
+                      )}
+                    </div>
 
-                    {note.lessonNum && (
-                      <span className="text-[11px] text-[var(--md-text-muted)]">
-                        {note.lessonNum} урок
-                      </span>
-                    )}
-                  </div>
-
-                  <p
-                    className={`text-xs text-[var(--md-text-primary)] whitespace-pre-wrap leading-relaxed ${
-                      note.isCompleted ? 'line-through text-[var(--md-text-muted)]' : ''
-                    }`}
-                  >
-                    {note.text}
-                  </p>
-
-                  <div className="flex items-center gap-2 mt-2 text-[10px] text-[var(--md-text-muted)]">
-                    <Calendar className="w-3 h-3" />
+                    {/* Date badge on the right */}
                     {note.transferPending ? (
-                      <span className="px-1.5 py-0.5 rounded font-bold bg-[var(--nika-subject)]/15 text-[var(--nika-subject)]">
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[var(--nika-subject)]/15 text-[var(--nika-subject)] shrink-0">
                         Перенос на след. неделю
                       </span>
                     ) : (
-                      <span>К {note.date}</span>
-                    )}
-                    {isPast && !note.isCompleted && !note.transferPending && note.type === 'homework' && (
-                      <span className="font-bold text-red-500">Просрочено</span>
+                      <span
+                        className={`text-xs font-semibold shrink-0 ${
+                          isDebt ? 'text-red-500' : 'text-[var(--md-text-muted)]'
+                        }`}
+                      >
+                        {formatDateWithDay(note.date)}
+                      </span>
                     )}
                   </div>
-                </div>
 
-                {/* Action buttons */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {note.type === 'homework' && !note.isCompleted && note.subject && !note.transferPending && (isPast || note.date === todayIso) && (
-                    <button
-                      onClick={() => {
-                        const targetSg =
-                          note.subgroup ??
-                          (note.subject!.toLowerCase().includes('технолог') && /^[5-8]/.test(targetName.trim())
-                            ? studentTechnologySubgroup
-                            : studentSubgroup);
-
-                        const nextInWeek = findNextLessonInCurrentWeek(
-                          currentSchedule,
-                          note.subject!,
-                          targetSg,
-                          todayIso,
-                          note.date === todayIso ? note.lessonNum : null,
-                          false,
-                          studentTechnologySubgroup,
-                          isTeacherMode ? false : /^[5-8]/.test(targetName.trim())
-                        );
-
-                        if (nextInWeek) {
-                          transferHomework(note.id, nextInWeek[0], nextInWeek[1]);
-                          alert(`Перенесено на ${nextInWeek[0]} (${nextInWeek[1]} урок)`);
-                        } else {
-                          markTransferPending(note.id);
-                          alert('Перенесено на след. неделю (будет привязано к ближайшему уроку)');
-                        }
-                      }}
-                      className="px-2 py-1 rounded-lg bg-[var(--nika-subject)]/10 text-[var(--nika-subject)] hover:bg-[var(--nika-subject)]/20 transition-colors flex items-center gap-1 text-[11px] font-semibold"
-                      title="Перенести на следующий урок"
-                    >
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>На след. урок</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => deleteNote(note.id)}
-                    className="text-[var(--md-text-muted)] hover:text-red-500 transition-colors p-1"
-                    title="Удалить"
+                  {/* Note Body Text */}
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setEditingNote(note);
+                      setIsDialogOpen(true);
+                    }}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <p
+                      className={`text-[13.5px] leading-relaxed whitespace-pre-wrap ${
+                        note.isCompleted
+                          ? 'line-through text-[var(--md-text-muted)]'
+                          : 'text-[var(--md-text-primary)]'
+                      }`}
+                    >
+                      {note.text}
+                    </p>
+                  </div>
+
+                  {/* Bottom Action Row */}
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--md-border-light)]/40">
+                    {/* Status Chip (Сдано / Не сдано) */}
+                    <button
+                      onClick={() => toggleCompleted(note.id)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                        note.isCompleted
+                          ? 'bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]'
+                          : 'bg-[var(--md-surface-variant)] text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)]'
+                      }`}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{note.isCompleted ? 'Сдано' : 'Не сдано'}</span>
+                    </button>
+
+                    {/* Transfer Button (if debt) + Edit Button next to Delete Button */}
+                    <div className="flex items-center gap-1">
+                      {note.type === 'homework' && !note.isCompleted && note.subject && !note.transferPending && (isPast || note.date === todayIso) && (
+                        <button
+                          onClick={() => {
+                            const targetSg =
+                              note.subgroup ??
+                              (note.subject!.toLowerCase().includes('технолог') && /^[5-8]/.test(targetName.trim())
+                                ? studentTechnologySubgroup
+                                : studentSubgroup);
+
+                            const nextInWeek = findNextLessonInCurrentWeek(
+                              currentSchedule,
+                              note.subject!,
+                              targetSg,
+                              todayIso,
+                              note.date === todayIso ? note.lessonNum : null,
+                              false,
+                              studentTechnologySubgroup,
+                              isTeacherMode ? false : /^[5-8]/.test(targetName.trim())
+                            );
+
+                            if (nextInWeek) {
+                              transferHomework(note.id, nextInWeek[0], nextInWeek[1]);
+                              alert(`Перенесено на ${nextInWeek[0]} (${nextInWeek[1]} урок)`);
+                            } else {
+                              markTransferPending(note.id);
+                              alert('Перенесено на след. неделю (будет привязано к ближайшему уроку)');
+                            }
+                          }}
+                          className="px-2 py-1 rounded-lg bg-[var(--nika-subject)]/10 text-[var(--nika-subject)] hover:bg-[var(--nika-subject)]/20 transition-colors flex items-center gap-1 text-[11px] font-semibold mr-1"
+                          title="Перенести на следующий урок"
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>На след. урок</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setEditingNote(note);
+                          setIsDialogOpen(true);
+                        }}
+                        className="p-1.5 rounded-lg text-[var(--md-text-secondary)] hover:bg-[var(--md-surface-variant)] transition-colors"
+                        title="Редактировать"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => deleteNote(note.id)}
+                        className="p-1.5 rounded-lg text-[var(--md-text-secondary)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                        title="Удалить"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Floating Action Button (FAB) in the bottom-right corner */}
