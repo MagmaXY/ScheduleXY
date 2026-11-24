@@ -18,6 +18,9 @@ concurrency:
 jobs:
   sync-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
@@ -45,6 +48,7 @@ jobs:
             echo "No schedule updates to commit."
           else
             git commit -m "chore: auto-update schedule cache data [skip ci]"
+            git pull --rebase origin main || true
             git push origin main
           fi
 

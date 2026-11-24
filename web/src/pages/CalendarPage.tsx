@@ -122,6 +122,24 @@ export const CalendarPage: React.FC = () => {
     (n) => n.targetName === targetName && n.type === 'homework' && !n.isCompleted && (n.date < todayIso || n.transferPending)
   ).length;
 
+  // Categories list for ribbon & hotkeys 1..9, 0
+  const categoriesList = React.useMemo(() => {
+    const list: { key: string | null; label: string; isDebt?: boolean }[] = [
+      { key: null, label: 'Все' },
+    ];
+    if (!isTeacherMode) {
+      list.push({ key: 'CAT_HW', label: 'ДЗ' });
+    }
+    list.push({ key: 'CAT_NOTES', label: 'Заметки' });
+    if (!isTeacherMode && debtsCount > 0) {
+      list.push({ key: 'CAT_DEBTS', label: `Долги (${debtsCount})`, isDebt: true });
+    }
+    eventCategories.forEach((cat) => {
+      list.push({ key: cat.color, label: cat.title });
+    });
+    return list;
+  }, [isTeacherMode, debtsCount, eventCategories]);
+
   // Archive weeks that belong to the currently viewed month
   const archiveWeeksInMonth = React.useMemo(() => {
     return archiveWeeksList
@@ -175,19 +193,32 @@ export const CalendarPage: React.FC = () => {
     }
   };
 
-  // Arrow key navigation for calendar months
+  // Arrow key navigation for calendar months & hotkeys 1,2,3,4,5,6,7,8,9,0 for categories
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
       if (e.key === 'ArrowRight') {
         nextMonth();
       } else if (e.key === 'ArrowLeft') {
         prevMonth();
+      } else if (/^[0-9]$/.test(e.key)) {
+        const digit = parseInt(e.key, 10);
+        // Digit 1..9 -> index 0..8, digit 0 -> index 9 (10th item)
+        const targetIndex = digit === 0 ? 9 : digit - 1;
+        if (targetIndex < categoriesList.length) {
+          const target = categoriesList[targetIndex];
+          setSelectedCategory((prev) => (prev === target.key ? null : target.key));
+        } else if (digit === 0) {
+          // If fewer than 10 categories, '0' resets to 'Все'
+          setSelectedCategory(null);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [year, month]);
+  }, [year, month, categoriesList]);
 
   // Touch and LMB mouse drag swipe support for switching months
   const swipeHandlers = useSwipeGesture({
@@ -438,76 +469,29 @@ export const CalendarPage: React.FC = () => {
 
       {/* Categories Horizontal Ribbon matching Android CalendarScreen.kt */}
       <div data-no-swipe="true" className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        <button
-          onClick={() => setSelectedCategory(null)}
-          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-            selectedCategory === null
-              ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-              : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
-          }`}
-        >
-          Все
-        </button>
+        {categoriesList.map((cat, idx) => {
+          const isSelected = selectedCategory === cat.key;
+          const shortcut = idx < 9 ? String(idx + 1) : idx === 9 ? '0' : undefined;
 
-        {!isTeacherMode && (
-          <button
-            onClick={() =>
-              setSelectedCategory(selectedCategory === 'CAT_HW' ? null : 'CAT_HW')
-            }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-              selectedCategory === 'CAT_HW'
-                ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
-            }`}
-          >
-            ДЗ
-          </button>
-        )}
-
-        <button
-          onClick={() =>
-            setSelectedCategory(selectedCategory === 'CAT_NOTES' ? null : 'CAT_NOTES')
-          }
-          className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-            selectedCategory === 'CAT_NOTES'
-              ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-              : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
-          }`}
-        >
-          Заметки
-        </button>
-
-        {!isTeacherMode && debtsCount > 0 && (
-          <button
-            onClick={() =>
-              setSelectedCategory(selectedCategory === 'CAT_DEBTS' ? null : 'CAT_DEBTS')
-            }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-              selectedCategory === 'CAT_DEBTS'
-                ? 'bg-red-500/20 text-red-600 dark:text-red-400 font-bold shadow-sm'
-                : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
-            }`}
-          >
-            Долги ({debtsCount})
-          </button>
-        )}
-
-        {/* Lyceum event categories */}
-        {eventCategories.map((cat) => (
-          <button
-            key={cat.color}
-            onClick={() =>
-              setSelectedCategory(selectedCategory === cat.color ? null : cat.color)
-            }
-            className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
-              selectedCategory === cat.color
-                ? 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
-                : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
-            }`}
-          >
-            {cat.title}
-          </button>
-        ))}
+          return (
+            <button
+              key={cat.key ?? 'ALL'}
+              onClick={() =>
+                setSelectedCategory(cat.key === null ? null : selectedCategory === cat.key ? null : cat.key)
+              }
+              title={shortcut ? `${cat.label} [${shortcut}]` : cat.label}
+              className={`h-8 px-3 rounded-lg text-xs font-semibold shrink-0 transition-all ${
+                isSelected
+                  ? cat.isDebt
+                    ? 'bg-red-500/20 text-red-600 dark:text-red-400 font-bold shadow-sm'
+                    : 'bg-[var(--md-surface-variant)] text-[var(--md-text-primary)] font-bold shadow-sm'
+                  : 'text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/40'
+              }`}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Events and Notes List */}
