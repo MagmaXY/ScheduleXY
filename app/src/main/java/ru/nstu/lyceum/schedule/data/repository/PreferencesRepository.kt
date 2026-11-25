@@ -141,6 +141,23 @@ class PreferencesRepository(context: Context) {
         get() = prefs.getLong(KEY_YANDEX_LAST_SYNC, 0L)
         set(value) = prefs.edit().putLong(KEY_YANDEX_LAST_SYNC, value).apply()
 
+    // --- App Update Settings ---
+    var autoUpdateCheckEnabled: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_UPDATE_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_AUTO_UPDATE_ENABLED, value).apply()
+
+    var lastUpdateCheckTime: Long
+        get() = prefs.getLong(KEY_LAST_UPDATE_CHECK_TIME, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_UPDATE_CHECK_TIME, value).apply()
+
+    var dismissedUpdateHash: String?
+        get() = prefs.getString(KEY_DISMISSED_UPDATE_HASH, null)
+        set(value) = prefs.edit().putString(KEY_DISMISSED_UPDATE_HASH, value).apply()
+
+    var cachedAvailableReleaseJson: String?
+        get() = prefs.getString(KEY_CACHED_AVAILABLE_RELEASE, null)
+        set(value) = prefs.edit().putString(KEY_CACHED_AVAILABLE_RELEASE, value).apply()
+
     companion object {
         private const val PREFS_NAME = "lyceum_schedule_prefs"
         const val TYPE_CLASS = "class"
@@ -182,5 +199,10 @@ class PreferencesRepository(context: Context) {
         private const val KEY_YANDEX_TOKEN = "yandex_oauth_token"
         private const val KEY_YANDEX_LOGIN = "yandex_user_login"
         private const val KEY_YANDEX_LAST_SYNC = "yandex_last_sync_time"
+
+        private const val KEY_AUTO_UPDATE_ENABLED = "auto_update_check_enabled"
+        private const val KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time"
+        private const val KEY_DISMISSED_UPDATE_HASH = "dismissed_update_hash"
+        private const val KEY_CACHED_AVAILABLE_RELEASE = "cached_available_release"
     }
 }

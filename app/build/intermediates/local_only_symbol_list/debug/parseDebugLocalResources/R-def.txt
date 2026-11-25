@@ -160,4 +160,5 @@ string teachers
 string today
 string widget_name
 style Theme.ScheduleXY
+xml file_paths
 xml schedule_widget_2x2_info

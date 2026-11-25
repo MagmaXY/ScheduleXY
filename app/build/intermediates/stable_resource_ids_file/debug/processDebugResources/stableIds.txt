@@ -1,4 +1,5 @@
-ru.nstu.lyceum.schedule:xml/image_share_filepaths = 0x7f0e0000
+ru.nstu.lyceum.schedule:xml/image_share_filepaths = 0x7f0e0001
+ru.nstu.lyceum.schedule:xml/file_paths = 0x7f0e0000
 ru.nstu.lyceum.schedule:styleable/GradientColorItem = 0x7f0d0005
 ru.nstu.lyceum.schedule:styleable/GradientColor = 0x7f0d0004
 ru.nstu.lyceum.schedule:styleable/FontFamilyFont = 0x7f0d0003
@@ -420,7 +421,7 @@ ru.nstu.lyceum.schedule:bool/enable_system_job_service_default = 0x7f020002
 ru.nstu.lyceum.schedule:bool/enable_system_alarm_service_default = 0x7f020000
 ru.nstu.lyceum.schedule:drawable/ic_coat_of_arms_nso = 0x7f05000e
 ru.nstu.lyceum.schedule:attr/fontVariationSettings = 0x7f01000a
-ru.nstu.lyceum.schedule:xml/schedule_widget_2x2_info = 0x7f0e0001
+ru.nstu.lyceum.schedule:xml/schedule_widget_2x2_info = 0x7f0e0002
 ru.nstu.lyceum.schedule:attr/fontProviderSystemFontFamily = 0x7f010008
 ru.nstu.lyceum.schedule:string/m3c_date_picker_scroll_to_earlier_years = 0x7f0b002b
 ru.nstu.lyceum.schedule:font/google_sans_medium = 0x7f060001

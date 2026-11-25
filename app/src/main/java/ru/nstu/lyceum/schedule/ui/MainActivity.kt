@@ -49,6 +49,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,11 +87,14 @@ import ru.nstu.lyceum.schedule.data.api.ScheduleResponse
 import ru.nstu.lyceum.schedule.data.api.TeacherItem
 import ru.nstu.lyceum.schedule.data.local.FreeAvailabilityEngine
 import ru.nstu.lyceum.schedule.data.repository.PreferencesRepository
+import ru.nstu.lyceum.schedule.data.update.ReleaseInfo
+import ru.nstu.lyceum.schedule.data.update.UpdateCheckResult
 import ru.nstu.lyceum.schedule.domain.BellSchedule
 import ru.nstu.lyceum.schedule.domain.BellState
 import ru.nstu.lyceum.schedule.domain.VacationChecker
 import ru.nstu.lyceum.schedule.ui.components.HeaderView
 import ru.nstu.lyceum.schedule.ui.components.InfoBottomSheet
+import ru.nstu.lyceum.schedule.ui.components.UpdateDialog
 import ru.nstu.lyceum.schedule.ui.screens.ArchiveScreen
 import ru.nstu.lyceum.schedule.ui.screens.CalendarScreen
 import ru.nstu.lyceum.schedule.ui.screens.FreeRoomsScreen
@@ -259,6 +263,17 @@ class MainActivity : ComponentActivity() {
                 }
                 var showSettingsDialog by remember { mutableStateOf(false) }
                 var showInfoBottomSheet by remember { mutableStateOf(false) }
+
+                val updateManager = app.appUpdateManager
+                var currentApkSha256 by remember { mutableStateOf<String?>(null) }
+                var availableUpdate by remember { mutableStateOf(updateManager.getCachedAvailableRelease()) }
+                var updateDialogRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
+                var autoUpdateEnabled by remember { mutableStateOf(prefs.autoUpdateCheckEnabled) }
+                var lastUpdateCheckTime by remember { mutableStateOf(prefs.lastUpdateCheckTime) }
+                var isCheckingUpdate by remember { mutableStateOf(false) }
+                var isDownloadingUpdate by remember { mutableStateOf(false) }
+                var updateDownloadProgress by remember { mutableFloatStateOf(0f) }
+                var updateDownloadError by remember { mutableStateOf<String?>(null) }
                 var statusBarPairsMode by remember { mutableStateOf(prefs.statusBarPairsMode) }
                 var showPairsSchedule by remember { mutableStateOf(prefs.showPairsSchedule) }
                 var overlaySwipeAnimation by remember { mutableStateOf(prefs.overlaySwipeAnimation) }
@@ -617,6 +632,28 @@ class MainActivity : ComponentActivity() {
                         archiveWeeksList = arch.weeks
                     } finally {
                         isLoading = false
+                    }
+
+                    // Background app update check (once per 24 hours)
+                    launch {
+                        currentApkSha256 = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            updateManager.getCurrentApkSha256()
+                        }
+                        availableUpdate = updateManager.getCachedAvailableRelease()
+                        when (val updRes = updateManager.checkForUpdate(forceManual = false)) {
+                            is UpdateCheckResult.UpdateAvailable -> {
+                                availableUpdate = updRes.release
+                                lastUpdateCheckTime = prefs.lastUpdateCheckTime
+                                if (!updRes.isDismissed) {
+                                    updateDialogRelease = updRes.release
+                                }
+                            }
+                            is UpdateCheckResult.UpToDate -> {
+                                availableUpdate = null
+                                lastUpdateCheckTime = prefs.lastUpdateCheckTime
+                            }
+                            else -> {}
+                        }
                     }
                 }
 
@@ -1029,7 +1066,92 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
+                            currentAppVersion = updateManager.getCurrentVersionName(),
+                            currentApkSha256 = currentApkSha256,
+                            availableUpdate = availableUpdate,
+                            isUpdateDismissed = availableUpdate != null && prefs.dismissedUpdateHash == availableUpdate?.sha256,
+                            initialAutoUpdateEnabled = autoUpdateEnabled,
+                            onAutoUpdateChanged = { enabled ->
+                                autoUpdateEnabled = enabled
+                                prefs.autoUpdateCheckEnabled = enabled
+                            },
+                            lastUpdateCheckTime = lastUpdateCheckTime,
+                            isCheckingUpdate = isCheckingUpdate,
+                            onCheckUpdateManual = {
+                                scope.launch {
+                                    isCheckingUpdate = true
+                                    if (currentApkSha256 == null) {
+                                        currentApkSha256 = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            updateManager.getCurrentApkSha256()
+                                        }
+                                    }
+                                    when (val res = updateManager.checkForUpdate(forceManual = true)) {
+                                        is UpdateCheckResult.UpdateAvailable -> {
+                                            availableUpdate = res.release
+                                            lastUpdateCheckTime = prefs.lastUpdateCheckTime
+                                            updateDownloadError = null
+                                            updateDialogRelease = res.release
+                                        }
+                                        is UpdateCheckResult.UpToDate -> {
+                                            availableUpdate = null
+                                            lastUpdateCheckTime = prefs.lastUpdateCheckTime
+                                            Toast.makeText(this@MainActivity, "Установлена актуальная версия", Toast.LENGTH_SHORT).show()
+                                        }
+                                        is UpdateCheckResult.Error -> {
+                                            Toast.makeText(this@MainActivity, "Ошибка: ${res.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                        UpdateCheckResult.Skipped -> {}
+                                    }
+                                    isCheckingUpdate = false
+                                }
+                            },
+                            onInstallUpdateClick = { rel ->
+                                showSettingsDialog = false
+                                updateDownloadError = null
+                                updateDialogRelease = rel
+                            },
                             onDismiss = { showSettingsDialog = false }
+                        )
+                    }
+
+                    if (updateDialogRelease != null) {
+                        val rel = updateDialogRelease!!
+                        UpdateDialog(
+                            release = rel,
+                            currentSha256 = currentApkSha256,
+                            isDownloading = isDownloadingUpdate,
+                            downloadProgress = updateDownloadProgress,
+                            downloadError = updateDownloadError,
+                            onInstallClick = {
+                                scope.launch {
+                                    isDownloadingUpdate = true
+                                    updateDownloadError = null
+                                    updateDownloadProgress = 0f
+                                    val res = updateManager.downloadAndInstallApk(rel) { progress ->
+                                        updateDownloadProgress = progress
+                                    }
+                                    isDownloadingUpdate = false
+                                    res.onSuccess {
+                                        updateDialogRelease = null
+                                    }.onFailure { err ->
+                                        updateDownloadError = err.message ?: "Ошибка скачивания обновления"
+                                    }
+                                }
+                            },
+                            onLaterClick = {
+                                updateDialogRelease = null
+                                updateDownloadError = null
+                            },
+                            onDeclineReleaseClick = {
+                                updateManager.dismissRelease(rel)
+                                updateDialogRelease = null
+                                updateDownloadError = null
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Напоминание скрыто. Обновить можно в Настройках",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         )
                     }
 

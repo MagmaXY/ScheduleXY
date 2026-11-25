@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.nstu.lyceum.schedule.data.repository.PreferencesRepository
+import ru.nstu.lyceum.schedule.data.update.ReleaseInfo
 
 @Composable
 fun SettingsDialog(
@@ -91,6 +92,16 @@ fun SettingsDialog(
     onYandexLogin: () -> Unit = {},
     onYandexLogout: () -> Unit = {},
     onYandexSyncManual: () -> Unit = {},
+    currentAppVersion: String = "1.0.0",
+    currentApkSha256: String? = null,
+    availableUpdate: ReleaseInfo? = null,
+    isUpdateDismissed: Boolean = false,
+    initialAutoUpdateEnabled: Boolean = true,
+    onAutoUpdateChanged: (Boolean) -> Unit = {},
+    lastUpdateCheckTime: Long = 0L,
+    isCheckingUpdate: Boolean = false,
+    onCheckUpdateManual: () -> Unit = {},
+    onInstallUpdateClick: (ReleaseInfo) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -100,6 +111,7 @@ fun SettingsDialog(
     var statusBarPairs by remember { mutableStateOf(initialStatusBarPairs) }
     var ongoingStatusNotification by remember { mutableStateOf(initialOngoingStatusNotification) }
     var overlaySwipe by remember { mutableStateOf(initialOverlaySwipe) }
+    var autoUpdateEnabled by remember { mutableStateOf(initialAutoUpdateEnabled) }
 
     var studentSubgroup by remember { mutableIntStateOf(initialSubgroup) }
     var studentTechSubgroup by remember { mutableIntStateOf(initialTechSubgroup) }
@@ -621,6 +633,143 @@ fun SettingsDialog(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Updates section
+                Text(
+                    text = "Обновления",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = colorScheme.surfaceContainerLow,
+                    border = BorderStroke(0.5.dp, colorScheme.outlineVariant)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        val shortHash = currentApkSha256?.take(8) ?: "—"
+                        Text(
+                            text = "Текущая версия: $currentAppVersion (sha256: $shortHash…)",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                            color = colorScheme.onSurface
+                        )
+                        val lastCheckStr = if (lastUpdateCheckTime > 0) {
+                            val sdf = java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault())
+                            "Проверено: ${sdf.format(java.util.Date(lastUpdateCheckTime))}"
+                        } else {
+                            "Проверка ещё не выполнялась"
+                        }
+                        Text(
+                            text = lastCheckStr,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                            color = colorScheme.outline
+                        )
+
+                        if (availableUpdate != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                color = colorScheme.primaryContainer.copy(alpha = 0.45f),
+                                border = BorderStroke(0.5.dp, colorScheme.primary.copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Доступно: ${availableUpdate.tagName.ifBlank { availableUpdate.releaseName }}",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                            color = colorScheme.onSurface
+                                        )
+                                        if (isUpdateDismissed) {
+                                            Text(
+                                                text = "Напоминание скрыто",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                                color = colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = { onInstallUpdateClick(availableUpdate) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = colorScheme.primary,
+                                            contentColor = colorScheme.onPrimary
+                                        )
+                                    ) {
+                                        Text(
+                                            text = "Установить",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.35f))
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Автопроверка обновлений",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                    color = colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Проверять последний релиз раз в 24 часа",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = autoUpdateEnabled,
+                                onCheckedChange = {
+                                    autoUpdateEnabled = it
+                                    onAutoUpdateChanged(it)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = colorScheme.onPrimary,
+                                    checkedTrackColor = colorScheme.primary,
+                                    uncheckedThumbColor = colorScheme.outline,
+                                    uncheckedTrackColor = colorScheme.surfaceVariant
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedButton(
+                            onClick = onCheckUpdateManual,
+                            enabled = !isCheckingUpdate,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                text = if (isCheckingUpdate) "Проверка обновлений..." else "Проверить обновления",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }

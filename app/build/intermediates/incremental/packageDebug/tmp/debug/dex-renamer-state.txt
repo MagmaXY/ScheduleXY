@@ -1,4 +1,4 @@
-#Wed Nov 25 21:01:24 NOVT 2026
+#Wed Nov 25 23:04:34 NOVT 2026
 base.0=C\:\\Users\\user\\Documents\\GitHub\\ScheduleXY\\app\\build\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex
 base.1=C\:\\Users\\user\\Documents\\GitHub\\ScheduleXY\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
 base.10=C\:\\Users\\user\\Documents\\GitHub\\ScheduleXY\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\6\\classes.dex

@@ -140,6 +140,10 @@
         "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/ic_chevron_left.xml"
     },
     {
+        "merged": "ru.nstu.lyceum.schedule.app-debug-57:/xml_file_paths.xml.flat",
+        "source": "ru.nstu.lyceum.schedule.app-main-59:/xml/file_paths.xml"
+    },
+    {
         "merged": "ru.nstu.lyceum.schedule.app-debug-57:/drawable_sysadmin_avatar.jpg.flat",
         "source": "ru.nstu.lyceum.schedule.app-main-59:/drawable/sysadmin_avatar.jpg"
     },

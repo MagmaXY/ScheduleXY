@@ -45,6 +45,8 @@ class LyceumApp : Application() {
         private set
     lateinit var yandexDiskSyncService: ru.nstu.lyceum.schedule.data.sync.YandexDiskSyncService
         private set
+    lateinit var appUpdateManager: ru.nstu.lyceum.schedule.data.update.AppUpdateManager
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -57,6 +59,7 @@ class LyceumApp : Application() {
         realtimeSyncManager = RealtimeSyncManager(applicationScope, this)
         notesRepository = ru.nstu.lyceum.schedule.data.local.NotesRepository(this, applicationScope)
         yandexDiskSyncService = ru.nstu.lyceum.schedule.data.sync.YandexDiskSyncService(this, preferencesRepository, notesRepository)
+        appUpdateManager = ru.nstu.lyceum.schedule.data.update.AppUpdateManager(this, preferencesRepository)
 
         // Trigger auto-sync when notes change if authorized
         notesRepository.onNotesChangedListener = {
