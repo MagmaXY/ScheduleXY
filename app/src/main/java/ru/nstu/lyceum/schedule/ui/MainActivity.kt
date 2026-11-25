@@ -3,6 +3,7 @@ package ru.nstu.lyceum.schedule.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -58,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -676,6 +678,8 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
                     containerColor = MaterialTheme.colorScheme.background,
@@ -707,40 +711,42 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     bottomBar = {
-                        NavigationBar(
-                            modifier = Modifier.fillMaxWidth(),
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 3.dp
-                        ) {
-                            val items = listOf(
-                                Triple(0, "Расписание", Icons.Default.Schedule),
-                                Triple(1, "Календарь", Icons.Default.CalendarMonth),
-                                Triple(2, "Заметки", Icons.AutoMirrored.Outlined.MenuBook),
-                                Triple(3, "Кабинеты", Icons.Default.MeetingRoom),
-                                Triple(4, "Архив", Icons.Default.Archive)
-                            )
-
-                            items.forEach { (index, title, icon) ->
-                                val selected = currentTab == index
-                                val iconTint = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                                NavigationBarItem(
-                                    selected = selected,
-                                    onClick = { currentTab = index },
-                                    icon = {
-                                        Icon(
-                                            imageVector = icon,
-                                            contentDescription = title,
-                                            tint = iconTint
-                                        )
-                                    },
-                                    label = null,
-                                    alwaysShowLabel = false,
-                                    colors = NavigationBarItemDefaults.colors(
-                                        indicatorColor = Color.Transparent,
-                                        selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                        if (!isLandscape) {
+                            NavigationBar(
+                                modifier = Modifier.fillMaxWidth(),
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 3.dp
+                            ) {
+                                val items = listOf(
+                                    Triple(0, "Расписание", Icons.Default.Schedule),
+                                    Triple(1, "Календарь", Icons.Default.CalendarMonth),
+                                    Triple(2, "Заметки", Icons.AutoMirrored.Outlined.MenuBook),
+                                    Triple(3, "Кабинеты", Icons.Default.MeetingRoom),
+                                    Triple(4, "Архив", Icons.Default.Archive)
                                 )
+
+                                items.forEach { (index, title, icon) ->
+                                    val selected = currentTab == index
+                                    val iconTint = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                    NavigationBarItem(
+                                        selected = selected,
+                                        onClick = { currentTab = index },
+                                        icon = {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = title,
+                                                tint = iconTint
+                                            )
+                                        },
+                                        label = null,
+                                        alwaysShowLabel = false,
+                                        colors = NavigationBarItemDefaults.colors(
+                                            indicatorColor = Color.Transparent,
+                                            selectedIconColor = MaterialTheme.colorScheme.onSurface,
+                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
