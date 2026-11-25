@@ -2,8 +2,8 @@
 // 1. In dev/preview environment (Vite): uses local /api-lyceum proxy (zero CORS issues, <300ms)
 // 2. In production (GitHub Pages / standalone): races direct API and configured CORS proxy
 
-// Dedicated Cloudflare Worker CORS proxy for Lyceum NSTU
-export const DEFAULT_PROXY_BASE = 'https://lyceum-proxy.dimafilippov1800.workers.dev';
+// Yandex Cloud Function CORS proxy for Lyceum NSTU & Yandex Disk
+export const DEFAULT_PROXY_BASE = 'https://functions.yandexcloud.net/d4e6qhlgsplrt7r7iumt';
 
 export interface ClientConfig {
   corsProxy: string;

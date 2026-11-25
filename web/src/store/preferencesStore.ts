@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { setClientConfig } from '../api/client';
+import { DEFAULT_PROXY_BASE, setClientConfig } from '../api/client';
 
 export type ThemePreset = 'classic' | 'emerald' | 'dynamic' | 'oled';
 export type TargetType = 'class' | 'teacher';
@@ -72,7 +72,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       copyIncludeNotes: false,
       useMagmaLogo: false,
       isMagmaUnlocked: false,
-      corsProxy: 'https://lyceum-proxy.dimafilippov1800.workers.dev',
+      corsProxy: DEFAULT_PROXY_BASE,
       notificationsEnabled: true,
 
       setTargetType: (type) => set({ targetType: type }),
@@ -122,6 +122,15 @@ export const usePreferencesStore = create<PreferencesState>()(
     }),
     {
       name: 'schedulexy-preferences',
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const stored = (state.corsProxy || '').trim();
+        if (!stored || stored.includes('workers.dev')) {
+          state.setCorsProxy(DEFAULT_PROXY_BASE);
+        } else {
+          setClientConfig({ corsProxy: stored });
+        }
+      },
     }
   )
 );

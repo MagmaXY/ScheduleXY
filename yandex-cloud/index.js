@@ -71,6 +71,7 @@ module.exports.handler = async function (event) {
     method,
     headers: forwardHeaders,
     redirect: 'follow',
+    signal: AbortSignal.timeout(9000),
   };
 
   if (method !== 'GET' && method !== 'HEAD' && event.body != null) {
@@ -82,8 +83,26 @@ module.exports.handler = async function (event) {
   try {
     const upstream = await fetch(targetUrl, fetchOptions);
     const contentType = upstream.headers.get('content-type') || 'application/json; charset=utf-8';
-    const buf = Buffer.from(await upstream.arrayBuffer());
+    const isTextLike =
+      contentType.includes('json') ||
+      contentType.startsWith('text/') ||
+      contentType.includes('javascript') ||
+      contentType.includes('xml');
 
+    if (isTextLike) {
+      const text = await upstream.text();
+      return {
+        statusCode: upstream.status,
+        headers: {
+          ...CORS_HEADERS,
+          'Content-Type': contentType,
+        },
+        body: text,
+        isBase64Encoded: false,
+      };
+    }
+
+    const buf = Buffer.from(await upstream.arrayBuffer());
     return {
       statusCode: upstream.status,
       headers: {
