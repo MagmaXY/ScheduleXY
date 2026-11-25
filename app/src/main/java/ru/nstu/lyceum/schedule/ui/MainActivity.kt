@@ -30,9 +30,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.MeetingRoom
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
@@ -85,6 +85,7 @@ import ru.nstu.lyceum.schedule.data.local.FreeAvailabilityEngine
 import ru.nstu.lyceum.schedule.data.repository.PreferencesRepository
 import ru.nstu.lyceum.schedule.domain.BellSchedule
 import ru.nstu.lyceum.schedule.domain.BellState
+import ru.nstu.lyceum.schedule.domain.VacationChecker
 import ru.nstu.lyceum.schedule.ui.components.HeaderView
 import ru.nstu.lyceum.schedule.ui.components.InfoBottomSheet
 import ru.nstu.lyceum.schedule.ui.screens.ArchiveScreen
@@ -290,14 +291,16 @@ class MainActivity : ComponentActivity() {
                 var selectedArchiveWeek by remember { mutableIntStateOf(-1) }
                 var archiveDayIndex by remember { mutableIntStateOf(defaultDayIndex) }
 
-                val initialActiveLsn = when (val b = realtime.state.value.bellState) {
-                    is BellState.InLesson -> b.num
-                    is BellState.Break -> b.nextNum
+                val isVacation = VacationChecker.isVacation(this@MainActivity)
+                val currentLessonBell = BellSchedule.getCurrentBellState(Calendar.getInstance(), isVacation)
+                val initialActiveLsn = when (currentLessonBell) {
+                    is BellState.InLesson -> currentLessonBell.num
+                    is BellState.Break -> currentLessonBell.nextNum
                     else -> 1
                 }.coerceIn(1, 12)
                 val initialFreeDay = if (realtime.state.value.dayIndex in 0..5 &&
-                    realtime.state.value.bellState !is BellState.Weekend &&
-                    realtime.state.value.bellState !is BellState.Vacation) {
+                    currentLessonBell !is BellState.Weekend &&
+                    currentLessonBell !is BellState.Vacation) {
                     realtime.state.value.dayIndex
                 } else {
                     defaultDayIndex
@@ -605,13 +608,15 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     if (currentTab == 3) {
-                        val activeLsn = when (val b = realtimeState.bellState) {
-                            is BellState.InLesson -> b.num
-                            is BellState.Break -> b.nextNum
+                        val isVac = VacationChecker.isVacation(this@MainActivity)
+                        val lsnBell = BellSchedule.getCurrentBellState(Calendar.getInstance(), isVac)
+                        val activeLsn = when (lsnBell) {
+                            is BellState.InLesson -> lsnBell.num
+                            is BellState.Break -> lsnBell.nextNum
                             else -> 1
                         }.coerceIn(1, 12)
-                        val todayHasLessons = realtimeState.bellState !is BellState.Weekend &&
-                                              realtimeState.bellState !is BellState.Vacation &&
+                        val todayHasLessons = lsnBell !is BellState.Weekend &&
+                                              lsnBell !is BellState.Vacation &&
                                               realtimeState.dayIndex in 0..5
                         freeDayIndex = if (todayHasLessons) realtimeState.dayIndex else defaultDayIndex
                         freeLessonNum = activeLsn
@@ -690,7 +695,7 @@ class MainActivity : ComponentActivity() {
                             val items = listOf(
                                 Triple(0, "Расписание", Icons.Default.Schedule),
                                 Triple(1, "Календарь", Icons.Default.CalendarMonth),
-                                Triple(2, "Заметки", Icons.Default.EditNote),
+                                Triple(2, "Заметки", Icons.AutoMirrored.Outlined.MenuBook),
                                 Triple(3, "Кабинеты", Icons.Default.MeetingRoom),
                                 Triple(4, "Архив", Icons.Default.Archive)
                             )
