@@ -32,7 +32,9 @@ interface ScheduleState {
   loadArchiveSchedule: (week: number) => Promise<void>;
 }
 
-export const useScheduleStore = create<ScheduleState>((set, get) => ({
+let latestScheduleReqId = 0;
+
+export const useScheduleStore = create<ScheduleState>((set) => ({
   currentSchedule: null,
   archiveSchedule: null,
   classesList: [],
@@ -52,10 +54,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   initBaseData: async () => {
     try {
       const [cls, tch, arch, ev] = await Promise.all([
-        scheduleRepository.getClasses(),
-        scheduleRepository.getTeachers(),
-        scheduleRepository.getArchiveWeeks(),
-        scheduleRepository.getEvents(),
+        scheduleRepository.getClasses('cache-first'),
+        scheduleRepository.getTeachers('cache-first'),
+        scheduleRepository.getArchiveWeeks('cache-first'),
+        scheduleRepository.getEvents('cache-first'),
       ]);
 
       set({
@@ -65,21 +67,82 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         eventsList: ev.items || [],
         eventCategories: ev.categories || [],
       });
+
+      // Background live revalidation so events, archive weeks, classes & teachers stay fresh
+      Promise.allSettled([
+        scheduleRepository.getClasses('live-only'),
+        scheduleRepository.getTeachers('live-only'),
+        scheduleRepository.getArchiveWeeks('live-only'),
+        scheduleRepository.getEvents('live-only'),
+      ]).then(([liveCls, liveTch, liveArch, liveEv]) => {
+        set((state) => ({
+          classesList:
+            liveCls.status === 'fulfilled' && liveCls.value.items?.length > 0
+              ? liveCls.value.items
+              : state.classesList,
+          teachersList:
+            liveTch.status === 'fulfilled' && liveTch.value.items?.length > 0
+              ? liveTch.value.items
+              : state.teachersList,
+          archiveWeeksList:
+            liveArch.status === 'fulfilled' && liveArch.value.weeks?.length > 0
+              ? liveArch.value.weeks
+              : state.archiveWeeksList,
+          eventsList:
+            liveEv.status === 'fulfilled' && liveEv.value.items?.length > 0
+              ? liveEv.value.items
+              : state.eventsList,
+          eventCategories:
+            liveEv.status === 'fulfilled' && liveEv.value.categories?.length > 0
+              ? liveEv.value.categories
+              : state.eventCategories,
+        }));
+      });
     } catch {
       // ignore
     }
   },
 
   loadSchedule: async (typeParam?: string, nameParam?: string, week = 0) => {
+    const reqId = ++latestScheduleReqId;
     const prefs = usePreferencesStore.getState();
     const type = typeParam || prefs.targetType;
     const name = nameParam || prefs.targetName;
     set({ isLoading: true });
+
+    // 1. Instant cached/static paint so UI renders in <20ms even if proxy is slow/offline
+    let hasFastSchedule = false;
     try {
-      const res = await scheduleRepository.getSchedule(type, name, week);
-      set({ currentSchedule: res, isLoading: false });
+      const fastRes = await scheduleRepository.getCachedOrStaticSchedule(type, name, week);
+      if (fastRes && reqId === latestScheduleReqId) {
+        hasFastSchedule = true;
+        set({ currentSchedule: fastRes });
+      }
     } catch {
-      set({ isLoading: false });
+      // ignore
+    }
+
+    // 2. Always fetch live schedule + changes via proxy in background
+    try {
+      const liveRes = await scheduleRepository.getSchedule(type, name, week, 'live-only');
+      if (reqId === latestScheduleReqId) {
+        set({ currentSchedule: liveRes, isLoading: false });
+      }
+    } catch {
+      if (reqId === latestScheduleReqId) {
+        if (!hasFastSchedule) {
+          try {
+            const fallback = await scheduleRepository.getSchedule(type, name, week, 'cache-first');
+            if (reqId === latestScheduleReqId) {
+              set({ currentSchedule: fallback, isLoading: false });
+              return;
+            }
+          } catch {
+            // ignore
+          }
+        }
+        set({ isLoading: false });
+      }
     }
   },
 

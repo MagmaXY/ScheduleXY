@@ -25,9 +25,13 @@ export function getClientConfig(): ClientConfig {
   return currentConfig;
 }
 
+export type FetchMode = 'cache-first' | 'live-first' | 'live-only';
+
 export async function fetchWithProxy<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  mode: FetchMode = 'cache-first',
+  timeoutMsOverride?: number
 ): Promise<T> {
   const cleanEndpoint = endpoint.replace(/^\//, '');
 
@@ -101,40 +105,41 @@ export async function fetchWithProxy<T>(
   // Priority URLs to try
   const urlsToTry: string[] = [];
 
-  // 1. If static pre-built cache is available, ALWAYS try it first (both on production and localhost)!
-  // It has zero CORS, works in RU without VPN, and loads in < 20ms.
-  if (staticCacheUrl && options.method !== 'POST') {
+  if (mode === 'cache-first' && staticCacheUrl && options.method !== 'POST') {
+    // 1. Static pre-built GitHub Pages cache for instant <20ms initial render
     urlsToTry.push(staticCacheUrl);
   }
 
   if (isLocalhost) {
-    // In local dev server, vite proxy works directly without CORS
+    // Local dev server vite proxy works directly without CORS
     urlsToTry.push(`/api-lyceum/${cleanEndpoint}`);
   }
 
-  // 2. High-speed custom Cloudflare Worker proxy via /proxy-url (live data / fallback)
+  // High-speed custom Cloudflare Worker proxy via /proxy-url (live data)
   const proxyBase = currentConfig.corsProxy || DEFAULT_PROXY_BASE;
   const cleanBase = proxyBase.replace(/\/+$/, '');
   const targetLyceumUrl = `https://lyceum.nstu.ru/info/api/${cleanEndpoint}`;
   urlsToTry.push(`${cleanBase}/proxy-url?url=${encodeURIComponent(targetLyceumUrl)}`);
 
-  // 3. Direct Lyceum API
+  // Direct Lyceum API (works where CORS is not enforced or in standalone environments)
   urlsToTry.push(targetLyceumUrl);
 
-  // 4. If static cache wasn't prioritized, add as final fallback
-  if (staticCacheUrl && !urlsToTry.includes(staticCacheUrl) && options.method !== 'POST') {
+  if (mode === 'live-first' && staticCacheUrl && !urlsToTry.includes(staticCacheUrl) && options.method !== 'POST') {
     urlsToTry.push(staticCacheUrl);
   }
 
   let lastError: unknown = null;
+  const effectiveTimeout = timeoutMsOverride ?? (mode === 'live-only' ? 7000 : currentConfig.timeoutMs);
 
   for (const url of urlsToTry) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), currentConfig.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), effectiveTimeout);
 
     try {
+      const isLiveRemote = url !== staticCacheUrl;
       const res = await fetch(url, {
         ...options,
+        cache: isLiveRemote && mode !== 'cache-first' ? 'no-store' : options.cache,
         signal: controller.signal,
         headers: {
           Accept: 'application/json',

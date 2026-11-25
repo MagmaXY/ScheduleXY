@@ -1,4 +1,5 @@
 import { lyceumApi } from './endpoints';
+import { FetchMode } from './client';
 import { cacheManager } from '../cache/cacheManager';
 import {
   ArchiveResponse,
@@ -15,9 +16,9 @@ import {
 } from '../domain/freeAvailabilityEngine';
 
 export const scheduleRepository = {
-  async getClasses(): Promise<ClassesResponse> {
+  async getClasses(mode: FetchMode = 'cache-first'): Promise<ClassesResponse> {
     try {
-      const res = await lyceumApi.getClasses();
+      const res = await lyceumApi.getClasses(mode);
       if (res.items?.length > 0) {
         await cacheManager.saveClasses(res);
       }
@@ -28,9 +29,9 @@ export const scheduleRepository = {
     }
   },
 
-  async getTeachers(): Promise<TeachersResponse> {
+  async getTeachers(mode: FetchMode = 'cache-first'): Promise<TeachersResponse> {
     try {
-      const res = await lyceumApi.getTeachers();
+      const res = await lyceumApi.getTeachers(mode);
       if (res.items?.length > 0) {
         await cacheManager.saveTeachers(res);
       }
@@ -41,16 +42,42 @@ export const scheduleRepository = {
     }
   },
 
-  async getSchedule(
+  async getCachedOrStaticSchedule(
     type: string,
     name: string,
     week = 0
+  ): Promise<ScheduleResponse | null> {
+    try {
+      const cached = await cacheManager.getSchedule(type, name, week);
+      if (cached && !JSON.stringify(cached).includes('\uFFFD')) {
+        return cached;
+      }
+      let res =
+        type === 'teacher'
+          ? await lyceumApi.getTeacherSchedule(name, week, 'cache-first')
+          : await lyceumApi.getClassSchedule(name, week, 'cache-first');
+
+      if (type === 'teacher') {
+        res = await this.enrichTeacherScheduleWithGroupLabels(name, week, res);
+      }
+      await cacheManager.saveSchedule(type, name, week, res);
+      return res;
+    } catch {
+      return null;
+    }
+  },
+
+  async getSchedule(
+    type: string,
+    name: string,
+    week = 0,
+    mode: FetchMode = 'cache-first'
   ): Promise<ScheduleResponse> {
     try {
       let res =
         type === 'teacher'
-          ? await lyceumApi.getTeacherSchedule(name, week)
-          : await lyceumApi.getClassSchedule(name, week);
+          ? await lyceumApi.getTeacherSchedule(name, week, mode)
+          : await lyceumApi.getClassSchedule(name, week, mode);
 
       if (type === 'teacher') {
         res = await this.enrichTeacherScheduleWithGroupLabels(name, week, res);
@@ -66,7 +93,7 @@ export const scheduleRepository = {
       return res;
     } catch (err) {
       const cached = await cacheManager.getSchedule(type, name, week);
-      if (cached) return cached;
+      if (cached && !JSON.stringify(cached).includes('\uFFFD')) return cached;
       throw err;
     }
   },
@@ -234,9 +261,9 @@ export const scheduleRepository = {
     }
   },
 
-  async getArchiveWeeks(): Promise<ArchiveResponse> {
+  async getArchiveWeeks(mode: FetchMode = 'cache-first'): Promise<ArchiveResponse> {
     try {
-      const res = await lyceumApi.getArchiveWeeks();
+      const res = await lyceumApi.getArchiveWeeks(mode);
       if (res.weeks?.length > 0) {
         await cacheManager.saveArchiveWeeks(res);
       }
@@ -247,9 +274,9 @@ export const scheduleRepository = {
     }
   },
 
-  async getEvents(): Promise<EventsResponse> {
+  async getEvents(mode: FetchMode = 'cache-first'): Promise<EventsResponse> {
     try {
-      const res = await lyceumApi.getEvents();
+      const res = await lyceumApi.getEvents(mode);
       if (res.items?.length > 0) {
         await cacheManager.saveEvents(res);
       }

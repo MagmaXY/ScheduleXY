@@ -109,7 +109,19 @@ export const App: React.FC = () => {
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+
+    // Periodic background live refresh every 5 minutes while tab is active
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        const p = usePreferencesStore.getState();
+        loadSchedule(p.targetType, p.targetName, 0);
+      }
+    }, 5 * 60 * 1000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   // Widget mode has its own stripped down layout

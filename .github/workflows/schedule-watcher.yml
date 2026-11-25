@@ -12,13 +12,15 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "schedule-watcher"
+  cancel-in-progress: true
 
 jobs:
   sync-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    outputs:
+      changed: ${{ steps.sync_check.outputs.changed }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,38 +40,49 @@ jobs:
           node scripts/sync-schedule.js
 
       - name: Commit & push updated schedule data if changed
+        id: sync_check
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add web/public/data/
-          if git diff --staged --quiet; then
-            echo "No schedule updates to commit."
+          if git diff --staged --quiet -- ':!web/public/data/meta.json'; then
+            echo "No schedule data updates to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "chore: auto-update schedule cache data [skip ci]"
             git pull --rebase origin main || true
             git push origin main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install dependencies
+        if: steps.sync_check.outputs.changed == 'true'
         working-directory: ./web
         run: npm ci
 
       - name: Build Web App
+        if: steps.sync_check.outputs.changed == 'true'
         working-directory: ./web
         run: npm run build
 
       - name: Setup Pages
+        if: steps.sync_check.outputs.changed == 'true'
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
+        if: steps.sync_check.outputs.changed == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist
 
   deploy:
+    if: needs.sync-and-build.outputs.changed == 'true'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: sync-and-build
