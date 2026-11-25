@@ -215,6 +215,12 @@ fun CalendarScreen(
         allNotes.filter { it.targetName == targetName }
     }
     val todayIso = remember { NotesTimeHelper.getTodayIso() }
+    val upcomingEndIso = remember {
+        val c = Calendar.getInstance()
+        c.add(Calendar.DAY_OF_YEAR, 21)
+        val isoFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        isoFormat.format(c.time)
+    }
     val totalDebts = remember(currentNotes, todayIso) {
         currentNotes.count { it.type == NoteType.HOMEWORK && !it.isCompleted && it.date < todayIso }
     }
@@ -594,11 +600,12 @@ fun CalendarScreen(
         val isNoteCategory = selectedCategory in listOf("CAT_HW", "CAT_NOTES", "CAT_DEBTS")
         val isEventColorCategory = selectedCategory != null && !isNoteCategory
 
-        val filteredNotes = remember(currentNotes, selectedCategory, selectedDateString, todayIso, searchQuery) {
-            if (isEventColorCategory) emptyList()
+        // Selected date events & notes
+        val selectedDayNotes = remember(currentNotes, selectedCategory, selectedDateString, todayIso, searchQuery) {
+            if (isEventColorCategory || selectedDateString == null) emptyList()
             else {
                 val base = currentNotes.filter { note ->
-                    val matchesDate = selectedDateString == null || note.date == selectedDateString
+                    val matchesDate = note.date == selectedDateString
                     val matchesCat = when (selectedCategory) {
                         "CAT_HW" -> note.type == NoteType.HOMEWORK
                         "CAT_NOTES" -> note.type == NoteType.NOTE
@@ -611,14 +618,44 @@ fun CalendarScreen(
             }
         }
 
-        val filteredEvents = remember(events, selectedCategory, selectedDateString, isNoteCategory, searchQuery) {
-            if (isNoteCategory) emptyList()
+        val selectedDayEvents = remember(events, selectedCategory, selectedDateString, isNoteCategory, searchQuery) {
+            if (isNoteCategory || selectedDateString == null) emptyList()
             else {
                 val base = events.filter { event ->
                     val matchesCat = (selectedCategory == null || event.color == selectedCategory)
-                    val matchesDate = (selectedDateString == null || event.date == selectedDateString)
+                    val matchesDate = event.date == selectedDateString
                     matchesCat && matchesDate
                 }
+                ru.nstu.lyceum.schedule.ui.util.SmartSearchEngine.searchEvents(base, searchQuery)
+            }
+        }
+
+        // Upcoming events (next 21 days from today) & upcoming notes
+        val upcomingNotes = remember(currentNotes, selectedCategory, todayIso, upcomingEndIso, searchQuery) {
+            if (isEventColorCategory) emptyList()
+            else {
+                val base = currentNotes.filter { note ->
+                    val inRange = note.date in todayIso..upcomingEndIso
+                    val matchesCat = when (selectedCategory) {
+                        "CAT_HW" -> note.type == NoteType.HOMEWORK
+                        "CAT_NOTES" -> note.type == NoteType.NOTE
+                        "CAT_DEBTS" -> note.type == NoteType.HOMEWORK && !note.isCompleted && note.date < todayIso
+                        else -> true
+                    }
+                    inRange && matchesCat
+                }.sortedBy { it.date }
+                ru.nstu.lyceum.schedule.ui.util.SmartSearchEngine.searchNotes(base, searchQuery)
+            }
+        }
+
+        val upcomingEvents = remember(events, selectedCategory, todayIso, upcomingEndIso, isNoteCategory, searchQuery) {
+            if (isNoteCategory) emptyList()
+            else {
+                val base = events.filter { event ->
+                    val inRange = event.date in todayIso..upcomingEndIso
+                    val matchesCat = (selectedCategory == null || event.color == selectedCategory)
+                    inRange && matchesCat
+                }.sortedBy { it.date }
                 ru.nstu.lyceum.schedule.ui.util.SmartSearchEngine.searchEvents(base, searchQuery)
             }
         }
@@ -818,27 +855,221 @@ fun CalendarScreen(
             }
         }
 
+            if (selectedDateString != null) {
+                val hasSelectedDayItems = selectedDayNotes.isNotEmpty() || selectedDayEvents.isNotEmpty()
+                val selectedDayFormatted = NotesTimeHelper.formatDateWithDay(selectedDateString!!)
+
+                item {
+                    Text(
+                        text = "События и заметки на $selectedDayFormatted",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
+                    )
+                }
+
+                if (!hasSelectedDayItems) {
+                    item {
+                        Text(
+                            text = if (searchQuery.isNotBlank()) "По запросу «$searchQuery» ничего не найдено на этот день" else "На этот день событий и заметок нет",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    items(selectedDayNotes, key = { "day_note_${it.id}" }) { note ->
+                        val isDebt = note.type == NoteType.HOMEWORK && !note.isCompleted && note.date < todayIso
+                        OutlinedCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.5.dp)
+                                .clickable { noteToEdit = note },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = if (isDebt) colorScheme.errorContainer.copy(alpha = 0.15f) else colorScheme.surface
+                            ),
+                            border = CardDefaults.outlinedCardBorder().copy(
+                                width = 0.6.dp,
+                                brush = androidx.compose.ui.graphics.SolidColor(
+                                    if (isDebt) colorScheme.error.copy(alpha = 0.5f) else colorScheme.outlineVariant
+                                )
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = if (isDebt) colorScheme.error else colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(15.dp)
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    val title = when {
+                                        note.type == NoteType.HOMEWORK -> {
+                                            val lsn = if (note.lessonNum != null) " (${note.lessonNum} урок)" else ""
+                                            "ДЗ: ${note.subject ?: ""}$lsn"
+                                        }
+                                        note.slotType == ru.nstu.lyceum.schedule.data.local.SlotType.BEFORE_LESSONS -> "До уроков"
+                                        note.slotType == ru.nstu.lyceum.schedule.data.local.SlotType.AFTER_LESSONS -> "После уроков"
+                                        note.slotType == ru.nstu.lyceum.schedule.data.local.SlotType.LESSON -> "Заметка (${note.lessonNum} урок)"
+                                        else -> "Заметка"
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = title,
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 12.5.sp
+                                            ),
+                                            color = if (isDebt) colorScheme.error else colorScheme.onSurface
+                                        )
+                                        if (isDebt) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = colorScheme.errorContainer
+                                            ) {
+                                                Text(
+                                                    text = "Не сдано",
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                                                    color = colorScheme.onErrorContainer,
+                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Text(
+                                        text = NotesTimeHelper.formatDateWithDay(note.date),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    val parsedText = MarkdownRenderer.parseMarkdown(note.text)
+                                    Text(
+                                        text = parsedText,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontSize = 12.sp,
+                                            textDecoration = if (note.isCompleted) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                                        ),
+                                        color = if (note.isCompleted) colorScheme.outlineVariant else colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(4.dp))
+
+                                IconButton(
+                                    onClick = {
+                                        notesRepository?.deleteNote(note.id)
+                                        Toast.makeText(context, "Запись удалена", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.size(30.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteOutline,
+                                        contentDescription = "Удалить",
+                                        tint = colorScheme.error.copy(alpha = 0.75f),
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    items(selectedDayEvents, key = { "day_ev_${it.date}_${it.title}" }) { ev ->
+                        OutlinedCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.5.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = colorScheme.surface
+                            ),
+                            border = CardDefaults.outlinedCardBorder().copy(
+                                width = 0.6.dp,
+                                brush = androidx.compose.ui.graphics.SolidColor(colorScheme.outlineVariant)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(getCategoryColor(ev.color))
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = ev.title,
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 12.5.sp
+                                        ),
+                                        color = colorScheme.onSurface
+                                    )
+                                    val label = ev.sourceLabel?.takeIf {
+                                        !it.contains("файл", ignoreCase = true) && !it.contains("сайт", ignoreCase = true)
+                                    }
+                                    Text(
+                                        text = if (!label.isNullOrBlank()) "${ev.date} • $label" else ev.date,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(thickness = 0.5.dp, color = colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+            }
+
+            // Section: Ближайшие события и заметки (на 21 день)
             item {
                 Text(
-                    text = if (selectedDateString != null) "События и заметки на $selectedDateString" else "События лицея и заметки",
+                    text = "Ближайшие события и заметки (на 3 недели)",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
                 )
             }
 
-            if (filteredNotes.isEmpty() && filteredEvents.isEmpty()) {
+            if (upcomingNotes.isEmpty() && upcomingEvents.isEmpty()) {
                 item {
                     Text(
-                        text = if (searchQuery.isNotBlank()) "По запросу «$searchQuery» ничего не найдено" else "В выбранной категории записей не найдено",
+                        text = if (searchQuery.isNotBlank()) "По запросу «$searchQuery» ничего не найдено" else "На ближайшие 3 недели событий и заметок нет",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp)
                     )
                 }
             } else {
-                // Notes first
-                items(filteredNotes, key = { "note_${it.id}" }) { note ->
+                items(upcomingNotes, key = { "upcoming_note_${it.id}" }) { note ->
                     val isDebt = note.type == NoteType.HOMEWORK && !note.isCompleted && note.date < todayIso
                     OutlinedCard(
                         modifier = Modifier
@@ -950,8 +1181,7 @@ fun CalendarScreen(
                     }
                 }
 
-                // Lyceum events next
-                items(filteredEvents) { ev ->
+                items(upcomingEvents, key = { "upcoming_ev_${it.date}_${it.title}" }) { ev ->
                     OutlinedCard(
                         modifier = Modifier
                             .fillMaxWidth()
