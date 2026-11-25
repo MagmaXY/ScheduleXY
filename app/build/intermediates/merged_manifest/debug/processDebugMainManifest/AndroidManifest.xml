@@ -35,6 +35,7 @@
         android:usesCleartextTraffic="true" >
         <activity
             android:name="ru.nstu.lyceum.schedule.ui.MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:exported="true"
             android:theme="@style/Theme.ScheduleXY"
             android:windowSoftInputMode="adjustResize" >

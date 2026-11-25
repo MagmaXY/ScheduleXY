@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,21 +30,54 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.nstu.lyceum.schedule.ui.theme.LyceumGreen
+
+object DayCycleHelper {
+    fun cycleOrder(showAllOption: Boolean): List<Int> =
+        if (showAllOption) listOf(6, 0, 1, 2, 3, 4, 5) else listOf(0, 1, 2, 3, 4, 5)
+
+    fun nextDay(current: Int, showAllOption: Boolean): Int {
+        val order = cycleOrder(showAllOption)
+        val idx = order.indexOf(current).let { if (it == -1) 0 else it }
+        return order[(idx + 1) % order.size]
+    }
+
+    fun prevDay(current: Int, showAllOption: Boolean): Int {
+        val order = cycleOrder(showAllOption)
+        val idx = order.indexOf(current).let { if (it == -1) 0 else it }
+        return order[(idx - 1 + order.size) % order.size]
+    }
+
+    fun isForwardTransition(from: Int, to: Int, showAllOption: Boolean): Boolean {
+        val order = cycleOrder(showAllOption)
+        val fromPos = order.indexOf(from).let { if (it == -1) 0 else it }
+        val toPos = order.indexOf(to).let { if (it == -1) 0 else it }
+        val last = order.lastIndex
+        return when {
+            fromPos == 0 && toPos == last -> false
+            fromPos == last && toPos == 0 -> true
+            else -> toPos > fromPos
+        }
+    }
+}
 
 @Composable
 fun DaySelector(
     selectedDayIndex: Int,
     currentDayIndex: Int,
     dateLabel: String? = null,
+    showAllOption: Boolean = false,
     onDaySelected: (Int) -> Unit,
-    onDateClick: (() -> Unit)? = null
+    onDateClick: (() -> Unit)? = null,
+    trailingActionContent: (@Composable RowScope.() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val dayNames = listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота")
     val shortDayNames = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб")
+    val isAllWeekSelected = showAllOption && selectedDayIndex == 6
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -52,19 +86,18 @@ fun DaySelector(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Main Nav Bar with < Day >
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 IconButton(
                     onClick = {
-                        val prev = if (selectedDayIndex > 0) selectedDayIndex - 1 else 5
-                        onDaySelected(prev)
+                        onDaySelected(DayCycleHelper.prevDay(selectedDayIndex, showAllOption))
                     },
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier
+                        .size(34.dp)
+                        .align(Alignment.CenterStart)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -76,32 +109,42 @@ fun DaySelector(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = if (onDateClick != null) Modifier.clickable(onClick = onDateClick) else Modifier
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = if (trailingActionContent != null) 88.dp else 38.dp)
+                        .then(if (onDateClick != null) Modifier.clickable(onClick = onDateClick) else Modifier)
                 ) {
-                    val baseDayName = dayNames.getOrElse(selectedDayIndex) { "Понедельник" }
-                    val resolvedDateLabel = if (!dateLabel.isNullOrBlank()) {
-                        dateLabel
+                    val title = if (isAllWeekSelected) {
+                        if (!dateLabel.isNullOrBlank()) "Вся неделя, $dateLabel" else "Вся неделя"
                     } else {
-                        try {
-                            val cal = java.util.Calendar.getInstance()
-                            val dayOfWeek = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
-                            cal.add(java.util.Calendar.DAY_OF_MONTH, -dayOfWeek + selectedDayIndex)
-                            java.text.SimpleDateFormat("d MMMM", java.util.Locale("ru")).format(cal.time)
-                        } catch (_: Exception) {
-                            null
+                        val baseDayName = dayNames.getOrElse(selectedDayIndex) { "Понедельник" }
+                        val resolvedDateLabel = if (!dateLabel.isNullOrBlank()) {
+                            dateLabel
+                        } else {
+                            try {
+                                val cal = java.util.Calendar.getInstance()
+                                val dayOfWeek = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+                                cal.add(java.util.Calendar.DAY_OF_MONTH, -dayOfWeek + selectedDayIndex)
+                                java.text.SimpleDateFormat("d MMMM", java.util.Locale("ru")).format(cal.time)
+                            } catch (_: Exception) {
+                                null
+                            }
                         }
+                        if (!resolvedDateLabel.isNullOrBlank()) "$baseDayName, $resolvedDateLabel" else baseDayName
                     }
-                    val title = if (!resolvedDateLabel.isNullOrBlank()) "$baseDayName, $resolvedDateLabel" else baseDayName
+
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.5.sp
                         ),
-                        color = if (selectedDayIndex == 5) colorScheme.secondary else colorScheme.onSurface
+                        color = if (!isAllWeekSelected && selectedDayIndex == 5) colorScheme.secondary else colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
-                    if (selectedDayIndex == currentDayIndex) {
+                    if (!isAllWeekSelected && selectedDayIndex == currentDayIndex) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
                             modifier = Modifier
@@ -121,19 +164,25 @@ fun DaySelector(
                     }
                 }
 
-                IconButton(
-                    onClick = {
-                        val next = if (selectedDayIndex < 5) selectedDayIndex + 1 else 0
-                        onDaySelected(next)
-                    },
-                    modifier = Modifier.size(34.dp)
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Следующий день",
-                        tint = colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    trailingActionContent?.invoke(this)
+
+                    IconButton(
+                        onClick = {
+                            onDaySelected(DayCycleHelper.nextDay(selectedDayIndex, showAllOption))
+                        },
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Следующий день",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -145,12 +194,17 @@ fun DaySelector(
                     .background(colorScheme.surfaceContainerHigh, shape = RoundedCornerShape(10.dp))
                     .padding(3.dp)
             ) {
+                val tabItems = if (showAllOption) {
+                    listOf(6 to "Вся") + shortDayNames.mapIndexed { i, label -> i to label }
+                } else {
+                    shortDayNames.mapIndexed { i, label -> i to label }
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    shortDayNames.forEachIndexed { index, name ->
+                    tabItems.forEach { (index, name) ->
                         val isSelected = index == selectedDayIndex
                         val isToday = index == currentDayIndex
 

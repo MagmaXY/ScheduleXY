@@ -56,7 +56,7 @@ fun PairCard(
     val l2 = pairUi.secondLesson
 
     // Check if both lessons have identical subject/groups
-    val areSubjectsIdentical = areLessonsIdentical(l1, l2, changesL1, changesL2)
+    val areSubjectsIdentical = SchedulePairMerger.areLessonsIdentical(l1, l2, changesL1, changesL2)
 
     val (splitTimes1, splitTimes2) = remember(pairUi.pairNum, pairUi.pairTimes) {
         PairSchedule.getSplitLessonTimes(pairUi.pairNum, pairUi.pairTimes)
@@ -725,31 +725,6 @@ private fun renderSubgroupRow(
             }
         }
     }
-}
-
-private fun areLessonsIdentical(
-    l1: Lesson,
-    l2: Lesson,
-    ch1: List<ScheduleChangeItem>,
-    ch2: List<ScheduleChangeItem>
-): Boolean {
-    if (l1.subgroups.size != l2.subgroups.size) return false
-    for (i in l1.subgroups.indices) {
-        val sg1 = l1.subgroups[i]
-        val sg2 = l2.subgroups[i]
-        val subj1 = sg1.subject?.trim()?.lowercase() ?: ""
-        val subj2 = sg2.subject?.trim()?.lowercase() ?: ""
-        if (subj1 != subj2) return false
-
-        val teacher1 = sg1.teacher?.trim()?.lowercase() ?: ""
-        val teacher2 = sg2.teacher?.trim()?.lowercase() ?: ""
-        if (teacher1 != teacher2) return false
-
-        val class1 = sg1.className?.trim()?.lowercase() ?: ""
-        val class2 = sg2.className?.trim()?.lowercase() ?: ""
-        if (class1 != class2) return false
-    }
-    return true
 }
 
 @Composable

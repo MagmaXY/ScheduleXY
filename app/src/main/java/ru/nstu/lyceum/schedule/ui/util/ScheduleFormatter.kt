@@ -5,11 +5,77 @@ import ru.nstu.lyceum.schedule.data.api.ScheduleChangeItem
 import ru.nstu.lyceum.schedule.data.api.ScheduleResponse
 import ru.nstu.lyceum.schedule.data.api.Subgroup
 import ru.nstu.lyceum.schedule.data.api.normalizeSubject
+import ru.nstu.lyceum.schedule.data.local.ScheduleNote
+import ru.nstu.lyceum.schedule.data.local.SlotType
 import ru.nstu.lyceum.schedule.ui.components.ScheduleItemUi
 import ru.nstu.lyceum.schedule.ui.components.SchedulePairMerger
 import ru.nstu.lyceum.schedule.ui.components.findChangeForSubgroup
+import java.util.Calendar
 
 object ScheduleFormatter {
+
+    private val MONTHS_GENITIVE = arrayOf(
+        "января", "февраля", "марта", "апреля", "мая", "июня",
+        "июля", "августа", "сентября", "октября", "ноября", "декабря"
+    )
+
+    private val DAY_NAMES = listOf(
+        "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"
+    )
+
+    private fun resolveMondayCalendar(weekStartStr: String?, fallbackWeekOffset: Int = 0): Calendar {
+        val cal = Calendar.getInstance()
+        if (!weekStartStr.isNullOrBlank()) {
+            try {
+                val parts = weekStartStr.split("-")
+                if (parts.size == 3) {
+                    cal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt(), 0, 0, 0)
+                    cal.set(Calendar.MILLISECOND, 0)
+                    return cal
+                }
+            } catch (_: Exception) {}
+        }
+        val dayOfWeek = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7 // 0=Mon..6=Sun
+        cal.add(Calendar.DAY_OF_MONTH, -dayOfWeek + (fallbackWeekOffset * 7))
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal
+    }
+
+    fun getDayDateGenitiveLabel(
+        weekStartStr: String?,
+        dayIndex: Int,
+        fallbackWeekOffset: Int = 0
+    ): String {
+        val cal = resolveMondayCalendar(weekStartStr, fallbackWeekOffset)
+        cal.add(Calendar.DAY_OF_MONTH, dayIndex)
+        val day = cal.get(Calendar.DAY_OF_MONTH)
+        val month = cal.get(Calendar.MONTH)
+        return "$day ${MONTHS_GENITIVE.getOrElse(month) { "" }}"
+    }
+
+    fun getWeekRangeGenitiveLabel(
+        weekStartStr: String?,
+        fallbackWeekOffset: Int = 0
+    ): String {
+        val startCal = resolveMondayCalendar(weekStartStr, fallbackWeekOffset)
+        val startDay = startCal.get(Calendar.DAY_OF_MONTH)
+        val startMonth = startCal.get(Calendar.MONTH)
+
+        val endCal = (startCal.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_MONTH, 5)
+        }
+        val endDay = endCal.get(Calendar.DAY_OF_MONTH)
+        val endMonth = endCal.get(Calendar.MONTH)
+
+        return if (startMonth == endMonth) {
+            "$startDay–$endDay ${MONTHS_GENITIVE.getOrElse(startMonth) { "" }}"
+        } else {
+            "$startDay ${MONTHS_GENITIVE.getOrElse(startMonth) { "" }} – $endDay ${MONTHS_GENITIVE.getOrElse(endMonth) { "" }}"
+        }
+    }
 
     /**
      * Formats lessons for sharing to clipboard with support for pair schedule mode.
@@ -22,12 +88,13 @@ object ScheduleFormatter {
         isTeacherMode: Boolean = false,
         targetName: String = "",
         showPairsSetting: Boolean = false,
-        notesForDay: List<ru.nstu.lyceum.schedule.data.local.ScheduleNote> = emptyList(),
+        notesForDay: List<ScheduleNote> = emptyList(),
         includeHomework: Boolean = false,
-        includeNotes: Boolean = false
+        includeNotes: Boolean = false,
+        headerPrefix: String = "📆 "
     ): String {
         val sb = StringBuilder()
-        sb.append("📆 ").append(dayTitle).append("\n\n")
+        sb.append(headerPrefix).append(dayTitle).append("\n\n")
 
         if (includeNotes) {
             val beforeNote = notesForDay.firstOrNull { it.slotType == ru.nstu.lyceum.schedule.data.local.SlotType.BEFORE_LESSONS }
@@ -164,7 +231,7 @@ object ScheduleFormatter {
         val pairPrefix = "${pairUi.pairRoman} (${pairUi.pairTimes}):"
         val indent = " ".repeat(pairPrefix.length + 1)
 
-        val areIdentical = areLessonsIdentical(l1, l2, ch1, ch2)
+        val areIdentical = SchedulePairMerger.areLessonsIdentical(l1, l2, ch1, ch2)
 
         if (areIdentical) {
             val allChanges = ch1.ifEmpty { ch2 }
@@ -294,28 +361,63 @@ object ScheduleFormatter {
         return groupPrefix + parts.joinToString(", ")
     }
 
-    private fun areLessonsIdentical(
-        l1: Lesson,
-        l2: Lesson,
-        ch1: List<ScheduleChangeItem>,
-        ch2: List<ScheduleChangeItem>
-    ): Boolean {
-        if (l1.subgroups.size != l2.subgroups.size) return false
-        for (i in l1.subgroups.indices) {
-            val sg1 = l1.subgroups[i]
-            val sg2 = l2.subgroups[i]
-            val subj1 = sg1.subject?.trim()?.lowercase() ?: ""
-            val subj2 = sg2.subject?.trim()?.lowercase() ?: ""
-            if (subj1 != subj2) return false
+    /**
+     * Formats the whole week schedule (Mon-Sat) for clipboard sharing.
+     * Uses genitive Russian month names and "День недели, дата" headers per day.
+     */
+    fun formatWeekScheduleForCopy(
+        scheduleResponse: ScheduleResponse?,
+        fallbackWeekOffset: Int = 0,
+        isTeacherMode: Boolean = false,
+        targetName: String = "",
+        showPairsSetting: Boolean = false,
+        notesByDayIndex: Map<Int, List<ScheduleNote>> = emptyMap(),
+        includeHomework: Boolean = false,
+        includeNotes: Boolean = false
+    ): String {
+        val weekStart = scheduleResponse?.weekStart
+        val weekRangeLabel = getWeekRangeGenitiveLabel(weekStart, fallbackWeekOffset)
 
-            val teacher1 = sg1.teacher?.trim()?.lowercase() ?: ""
-            val teacher2 = sg2.teacher?.trim()?.lowercase() ?: ""
-            if (teacher1 != teacher2) return false
+        val sb = StringBuilder()
+        sb.append("📆 Вся неделя, ").append(weekRangeLabel).append("\n\n")
 
-            val class1 = sg1.className?.trim()?.lowercase() ?: ""
-            val class2 = sg2.className?.trim()?.lowercase() ?: ""
-            if (class1 != class2) return false
+        for (dayIdx in 0..5) {
+            if (dayIdx > 0) {
+                sb.append("\n\n")
+            }
+            val dayName = DAY_NAMES.getOrElse(dayIdx) { "День" }
+            val dateLabel = getDayDateGenitiveLabel(weekStart, dayIdx, fallbackWeekOffset)
+            val fullDayTitle = "$dayName, $dateLabel"
+
+            val lessons = scheduleResponse?.days?.firstOrNull { it.dayIndex == dayIdx }?.lessons ?: emptyList()
+            val notesForDay = notesByDayIndex[dayIdx] ?: emptyList()
+
+            val hasIncludedBeforeOrAfter = includeNotes && notesForDay.any {
+                (it.slotType == SlotType.BEFORE_LESSONS || it.slotType == SlotType.AFTER_LESSONS) && it.text.isNotBlank()
+            }
+
+            if (lessons.isEmpty() && !hasIncludedBeforeOrAfter) {
+                sb.append("📅 ").append(fullDayTitle).append("\n")
+                sb.append("Занятий нет")
+            } else {
+                sb.append(
+                    formatScheduleForCopy(
+                        dayTitle = fullDayTitle,
+                        lessons = lessons,
+                        scheduleResponse = scheduleResponse,
+                        dayIndex = dayIdx,
+                        isTeacherMode = isTeacherMode,
+                        targetName = targetName,
+                        showPairsSetting = showPairsSetting,
+                        notesForDay = notesForDay,
+                        includeHomework = includeHomework,
+                        includeNotes = includeNotes,
+                        headerPrefix = "📅 "
+                    )
+                )
+            }
         }
-        return true
+
+        return sb.toString().trimEnd()
     }
 }

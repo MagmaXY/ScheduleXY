@@ -1,6 +1,7 @@
 package ru.nstu.lyceum.schedule.ui.components
 
 import ru.nstu.lyceum.schedule.data.api.Lesson
+import ru.nstu.lyceum.schedule.data.api.ScheduleChangeItem
 import ru.nstu.lyceum.schedule.domain.PairSchedule
 
 sealed class ScheduleItemUi {
@@ -100,5 +101,40 @@ object SchedulePairMerger {
                 is ScheduleItemUi.CombinedPair -> item.firstLesson.num
             }
         }
+    }
+
+    fun areLessonsIdentical(
+        l1: Lesson,
+        l2: Lesson,
+        ch1: List<ScheduleChangeItem> = emptyList(),
+        ch2: List<ScheduleChangeItem> = emptyList()
+    ): Boolean {
+        if (l1.subgroups.size != l2.subgroups.size) return false
+        for (i in l1.subgroups.indices) {
+            val sg1 = l1.subgroups[i]
+            val sg2 = l2.subgroups[i]
+            val subj1 = sg1.subject?.trim()?.lowercase() ?: ""
+            val subj2 = sg2.subject?.trim()?.lowercase() ?: ""
+            if (subj1 != subj2) return false
+
+            val teacher1 = sg1.teacher?.trim()?.lowercase() ?: ""
+            val teacher2 = sg2.teacher?.trim()?.lowercase() ?: ""
+            if (teacher1 != teacher2) return false
+
+            val class1 = sg1.className?.trim()?.lowercase() ?: ""
+            val class2 = sg2.className?.trim()?.lowercase() ?: ""
+            if (class1 != class2) return false
+        }
+        if (ch1.isNotEmpty() || ch2.isNotEmpty()) {
+            if (ch1.size != ch2.size) return false
+            val norm1 = ch1.map {
+                "${it.isCancelledLesson}|${it.subject?.trim()?.lowercase() ?: ""}|${it.teacher?.trim()?.lowercase() ?: ""}|${it.room?.trim()?.lowercase() ?: ""}|${it.className?.trim()?.lowercase() ?: ""}"
+            }.sorted()
+            val norm2 = ch2.map {
+                "${it.isCancelledLesson}|${it.subject?.trim()?.lowercase() ?: ""}|${it.teacher?.trim()?.lowercase() ?: ""}|${it.room?.trim()?.lowercase() ?: ""}|${it.className?.trim()?.lowercase() ?: ""}"
+            }.sorted()
+            if (norm1 != norm2) return false
+        }
+        return true
     }
 }

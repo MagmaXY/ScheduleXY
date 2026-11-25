@@ -1,5 +1,6 @@
 package ru.nstu.lyceum.schedule.ui.screens
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -10,6 +11,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import ru.nstu.lyceum.schedule.ui.components.WeekScheduleTable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -92,6 +97,7 @@ import ru.nstu.lyceum.schedule.domain.BellState
 import ru.nstu.lyceum.schedule.domain.PairSchedule
 import ru.nstu.lyceum.schedule.domain.RealtimeSyncManager
 import ru.nstu.lyceum.schedule.domain.VacationChecker
+import ru.nstu.lyceum.schedule.ui.components.DayCycleHelper
 import ru.nstu.lyceum.schedule.ui.components.DaySelector
 import ru.nstu.lyceum.schedule.ui.components.LessonCard
 import java.text.SimpleDateFormat
@@ -167,6 +173,7 @@ fun ScheduleScreen(
     onDaySelected: (Int) -> Unit,
     onTeacherClassClick: ((String) -> Unit)? = null,
     onRoomClick: ((room: String, lessonNum: Int) -> Unit)? = null,
+    onTableRoomClick: ((dayIndex: Int, room: String, lessonNum: Int) -> Unit)? = null,
     onNavigateToCalendar: (String) -> Unit = {},
     onNavigateToNotes: (String) -> Unit = {}
 ) {
@@ -177,6 +184,22 @@ fun ScheduleScreen(
     var dialogDefaultType by remember { mutableStateOf(NoteType.HOMEWORK) }
     var dialogDefaultLessonNum by remember { mutableStateOf<Int?>(null) }
     var dialogDefaultSubject by remember { mutableStateOf<String?>(null) }
+    var dialogTargetDayIndex by remember { mutableIntStateOf(if (selectedDayIndex in 0..5) selectedDayIndex else 0) }
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    var lastSingleDayIndex by rememberSaveable { mutableIntStateOf(if (selectedDayIndex in 0..5) selectedDayIndex else 0) }
+
+    LaunchedEffect(selectedDayIndex) {
+        if (selectedDayIndex in 0..5) {
+            lastSingleDayIndex = selectedDayIndex
+        }
+    }
+    LaunchedEffect(isLandscape, selectedDayIndex) {
+        if (!isLandscape && selectedDayIndex == 6) {
+            onDaySelected(lastSingleDayIndex)
+        }
+    }
 
     val allNotes = notesRepository?.notes?.collectAsState()?.value ?: emptyList()
     val clipboardManager = LocalClipboardManager.current
@@ -191,8 +214,18 @@ fun ScheduleScreen(
             .background(colorScheme.background)
     ) {
         // Top Unified Header Bar: [ Классы | Учителя ] ... [ 👥 10-1 ▼ ] [ ★ ] + Day Switching
-        val scheduleDateLabel = remember(currentSchedule?.weekStart, selectedDayIndex) {
-            getScheduleDateLabel(currentSchedule?.weekStart, selectedDayIndex)
+        val scheduleDateLabel = remember(currentSchedule?.weekStart, selectedDayIndex, isLandscape) {
+            if (isLandscape && selectedDayIndex == 6) {
+                ScheduleFormatter.getWeekRangeGenitiveLabel(currentSchedule?.weekStart, 0)
+            } else {
+                getScheduleDateLabel(currentSchedule?.weekStart, selectedDayIndex)
+            }
+        }
+        val notesByDayIndex = remember(allNotes, targetName, currentSchedule?.weekStart) {
+            (0..5).associateWith { d ->
+                val dIso = NotesTimeHelper.getDateIsoForDayIndex(currentSchedule?.weekStart, d)
+                allNotes.filter { it.targetName == targetName && it.date == dIso }
+            }
         }
         val isThisWeek = remember(currentSchedule?.weekStart) {
             BellSchedule.isCurrentScheduleWeek(currentSchedule?.weekStart)
@@ -477,11 +510,97 @@ fun ScheduleScreen(
                     selectedDayIndex = selectedDayIndex,
                     currentDayIndex = activeDayIndex,
                     dateLabel = scheduleDateLabel,
+                    showAllOption = isLandscape,
                     onDaySelected = onDaySelected,
                     onDateClick = {
-                        val iso = getScheduleDayDateIso(currentSchedule?.weekStart, selectedDayIndex)
+                        val focusDayIdx = if (selectedDayIndex in 0..5) selectedDayIndex else 0
+                        val iso = getScheduleDayDateIso(currentSchedule?.weekStart, focusDayIdx)
                         onNavigateToCalendar(iso)
-                    }
+                    },
+                    trailingActionContent = if (isLandscape && selectedDayIndex == 6) {
+                        {
+                            IconButton(
+                                onClick = {
+                                    val textToCopy = ScheduleFormatter.formatWeekScheduleForCopy(
+                                        scheduleResponse = currentSchedule,
+                                        fallbackWeekOffset = 0,
+                                        isTeacherMode = isTeacherMode,
+                                        targetName = targetName,
+                                        showPairsSetting = showPairsSchedule,
+                                        notesByDayIndex = notesByDayIndex,
+                                        includeHomework = copyIncludeHomework,
+                                        includeNotes = copyIncludeNotes
+                                    )
+                                    clipboardManager.setText(AnnotatedString(textToCopy))
+                                    Toast.makeText(context, "Расписание недели скопировано", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_copy_content),
+                                    contentDescription = "Скопировать расписание недели",
+                                    tint = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            if (notesRepository != null) {
+                                Box {
+                                    IconButton(
+                                        onClick = { noteMenuExpanded = true },
+                                        modifier = Modifier.size(34.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Заметки",
+                                            tint = colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = noteMenuExpanded,
+                                        onDismissRequest = { noteMenuExpanded = false },
+                                        modifier = Modifier.background(colorScheme.surfaceContainerHigh)
+                                    ) {
+                                        val fallbackDay = if (activeDayIndex in 0..5) activeDayIndex else lastSingleDayIndex
+                                        val fallbackDateIso = NotesTimeHelper.getDateIsoForDayIndex(currentSchedule?.weekStart, fallbackDay)
+                                        if (!isTeacherMode) {
+                                            DropdownMenuItem(
+                                                text = { Text("Записать ДЗ", style = MaterialTheme.typography.bodyMedium) },
+                                                onClick = {
+                                                    noteMenuExpanded = false
+                                                    dialogTargetDayIndex = fallbackDay
+                                                    dialogDefaultType = NoteType.HOMEWORK
+                                                    dialogDefaultLessonNum = null
+                                                    dialogDefaultSubject = null
+                                                    showNoteDialog = true
+                                                }
+                                            )
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text("Своя заметка", style = MaterialTheme.typography.bodyMedium) },
+                                            onClick = {
+                                                noteMenuExpanded = false
+                                                dialogTargetDayIndex = fallbackDay
+                                                dialogDefaultType = NoteType.NOTE
+                                                dialogDefaultLessonNum = null
+                                                dialogDefaultSubject = null
+                                                showNoteDialog = true
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Управление заметками", style = MaterialTheme.typography.bodyMedium) },
+                                            onClick = {
+                                                noteMenuExpanded = false
+                                                onNavigateToNotes(fallbackDateIso)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else null
                 )
             }
         }
@@ -493,16 +612,14 @@ fun ScheduleScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(selectedDayIndex) {
+                .pointerInput(selectedDayIndex, isLandscape) {
                     detectHorizontalDragGestures(
                         onDragStart = { totalDragX = 0f },
                         onDragEnd = {
                             if (totalDragX < -60f) {
-                                val next = if (selectedDayIndex < 5) selectedDayIndex + 1 else 0
-                                onDaySelected(next)
+                                onDaySelected(DayCycleHelper.nextDay(selectedDayIndex, isLandscape))
                             } else if (totalDragX > 60f) {
-                                val prev = if (selectedDayIndex > 0) selectedDayIndex - 1 else 5
-                                onDaySelected(prev)
+                                onDaySelected(DayCycleHelper.prevDay(selectedDayIndex, isLandscape))
                             }
                         },
                         onHorizontalDrag = { _, dragAmount ->
@@ -520,7 +637,7 @@ fun ScheduleScreen(
                     targetState = selectedDayIndex,
                     transitionSpec = {
                         if (overlaySwipeAnimation) {
-                            val forward = if (initialState == 0 && targetState == 5) false else if (initialState == 5 && targetState == 0) true else targetState > initialState
+                            val forward = DayCycleHelper.isForwardTransition(initialState, targetState, isLandscape)
                             if (forward) {
                                 (slideInHorizontally(
                                     animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
@@ -546,6 +663,60 @@ fun ScheduleScreen(
                     },
                     label = "schedule_day_content"
                 ) { dayIdx ->
+                    if (dayIdx == 6 && isLandscape) {
+                        val isVacation = VacationChecker.isVacation(context)
+                        val currentLessonBell = remember(realtimeState) {
+                            BellSchedule.getCurrentBellState(Calendar.getInstance(), isVacation)
+                        }
+                        val currentPairBell = remember(realtimeState) {
+                            PairSchedule.getCurrentPairState(Calendar.getInstance(), isVacation)
+                        }
+                        val activeLessonNum = (currentLessonBell as? BellState.InLesson)?.num
+                        val activePairNum = (currentPairBell as? BellState.InLesson)?.num
+
+                        WeekScheduleTable(
+                            schedule = currentSchedule,
+                            weekStartFallbackOffset = 0,
+                            isTeacherMode = isTeacherMode,
+                            targetName = targetName,
+                            showPairsSchedule = showPairsSchedule,
+                            activeDayIndex = activeDayIndex,
+                            activeLessonNum = activeLessonNum,
+                            activePairNum = activePairNum,
+                            notesByDayIndex = notesByDayIndex,
+                            userSubgroup = userSubgroup,
+                            userTechSubgroup = userTechSubgroup,
+                            emptyText = "На эту неделю занятий нет",
+                            onToggleNoteCompleted = { notesRepository?.toggleCompleted(it) },
+                            onDayClick = { clickedDay -> onDaySelected(clickedDay) },
+                            onDateClick = { dateIso -> onNavigateToCalendar(dateIso) },
+                            onTeacherClassClick = onTeacherClassClick,
+                            onRoomClick = if (onTableRoomClick != null) {
+                                onTableRoomClick
+                            } else if (onRoomClick != null) {
+                                { _, room, lsn -> onRoomClick(room, lsn) }
+                            } else null,
+                            onLessonCellClick = if (notesRepository != null && !isTeacherMode) {
+                                { clickedDay, lsnNum ->
+                                    val dayIso = NotesTimeHelper.getDateIsoForDayIndex(currentSchedule?.weekStart, clickedDay)
+                                    val isMiddle = Regex("^[5-7][а-яА-Яa-zA-Z].*").matches(targetName.trim())
+                                    val effSubj = NotesTimeHelper.getEffectiveLessonSubject(
+                                        schedule = currentSchedule,
+                                        dateIso = dayIso,
+                                        lessonNum = lsnNum,
+                                        userSubgroup = userSubgroup,
+                                        userTechSubgroup = userTechSubgroup,
+                                        isMiddleSchool = isMiddle
+                                    )
+                                    dialogTargetDayIndex = clickedDay
+                                    dialogDefaultType = NoteType.HOMEWORK
+                                    dialogDefaultLessonNum = lsnNum
+                                    dialogDefaultSubject = effSubj
+                                    showNoteDialog = true
+                                }
+                            } else null
+                        )
+                    } else {
                     val daySchedule = currentSchedule?.days?.firstOrNull { it.dayIndex == dayIdx }
                     val lessons = daySchedule?.lessons ?: emptyList()
 
@@ -673,6 +844,7 @@ fun ScheduleScreen(
                                                             userTechSubgroup = userTechSubgroup,
                                                             isMiddleSchool = isMiddle
                                                         )
+                                                        dialogTargetDayIndex = dayIdx
                                                         dialogDefaultType = NoteType.HOMEWORK
                                                         dialogDefaultLessonNum = lesson.num
                                                         dialogDefaultSubject = effSubj
@@ -711,6 +883,7 @@ fun ScheduleScreen(
                                                             userTechSubgroup = userTechSubgroup,
                                                             isMiddleSchool = isMiddle
                                                         )
+                                                        dialogTargetDayIndex = dayIdx
                                                         dialogDefaultType = NoteType.HOMEWORK
                                                         dialogDefaultLessonNum = lsnNum
                                                         dialogDefaultSubject = effSubj
@@ -728,6 +901,7 @@ fun ScheduleScreen(
                                                             userTechSubgroup = userTechSubgroup,
                                                             isMiddleSchool = isMiddle
                                                         )
+                                                        dialogTargetDayIndex = dayIdx
                                                         dialogDefaultType = NoteType.HOMEWORK
                                                         dialogDefaultLessonNum = item.firstLesson.num
                                                         dialogDefaultSubject = effSubj
@@ -767,7 +941,8 @@ fun ScheduleScreen(
 
                             // Static copy button in top-right corner over schedule
                             val dayNames = listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота")
-                            val fullDayTitle = "${dayNames.getOrElse(dayIdx) { "Понедельник" }}, $scheduleDateLabel"
+                            val dayDateText = ScheduleFormatter.getDayDateGenitiveLabel(currentSchedule?.weekStart, dayIdx)
+                            val fullDayTitle = "${dayNames.getOrElse(dayIdx) { "Понедельник" }}, $dayDateText"
                             IconButton(
                                 onClick = {
                                     val textToCopy = ScheduleFormatter.formatScheduleForCopy(
@@ -827,6 +1002,7 @@ fun ScheduleScreen(
                                                 text = { Text("Записать ДЗ", style = MaterialTheme.typography.bodyMedium) },
                                                 onClick = {
                                                     noteMenuExpanded = false
+                                                    dialogTargetDayIndex = dayIdx
                                                     dialogDefaultType = NoteType.HOMEWORK
                                                     dialogDefaultLessonNum = null
                                                     dialogDefaultSubject = null
@@ -838,6 +1014,7 @@ fun ScheduleScreen(
                                             text = { Text("Своя заметка", style = MaterialTheme.typography.bodyMedium) },
                                             onClick = {
                                                 noteMenuExpanded = false
+                                                dialogTargetDayIndex = dayIdx
                                                 dialogDefaultType = NoteType.NOTE
                                                 dialogDefaultLessonNum = null
                                                 dialogDefaultSubject = null
@@ -855,6 +1032,7 @@ fun ScheduleScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
@@ -882,7 +1060,7 @@ fun ScheduleScreen(
     }
 
     if (showNoteDialog) {
-        val currentDayIdx = selectedDayIndex
+        val currentDayIdx = dialogTargetDayIndex.coerceIn(0, 5)
         val targetDateIso = NotesTimeHelper.getDateIsoForDayIndex(currentSchedule?.weekStart, currentDayIdx)
         val isMiddle = Regex("^[5-7][а-яА-Яa-zA-Z].*").matches(targetName.trim())
         val available = NotesTimeHelper.getAvailableLessonsForDate(

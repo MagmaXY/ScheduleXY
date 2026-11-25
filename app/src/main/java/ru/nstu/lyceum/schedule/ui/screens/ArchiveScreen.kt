@@ -1,5 +1,6 @@
 package ru.nstu.lyceum.schedule.ui.screens
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -10,6 +11,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalConfiguration
+import ru.nstu.lyceum.schedule.ui.components.WeekScheduleTable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -80,6 +86,7 @@ import ru.nstu.lyceum.schedule.data.api.ClassItem
 import ru.nstu.lyceum.schedule.data.api.ScheduleResponse
 import ru.nstu.lyceum.schedule.data.api.TeacherItem
 import ru.nstu.lyceum.schedule.data.repository.PreferencesRepository
+import ru.nstu.lyceum.schedule.ui.components.DayCycleHelper
 import ru.nstu.lyceum.schedule.ui.components.DaySelector
 import ru.nstu.lyceum.schedule.ui.components.LessonCard
 import java.text.SimpleDateFormat
@@ -179,12 +186,28 @@ fun ArchiveScreen(
     onTargetTypeChanged: (String) -> Unit,
     onTargetNameChanged: (String) -> Unit,
     onDaySelected: (Int) -> Unit,
+    onTeacherClassClick: ((String) -> Unit)? = null,
     onNavigateToCalendar: (String) -> Unit = {}
 ) {
     var dropdownExpanded by remember { mutableStateOf(false) }
     var filterQuery by remember { mutableStateOf("") }
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    var lastSingleDayIndex by rememberSaveable { mutableIntStateOf(if (selectedDayIndex in 0..5) selectedDayIndex else 0) }
+
+    LaunchedEffect(selectedDayIndex) {
+        if (selectedDayIndex in 0..5) {
+            lastSingleDayIndex = selectedDayIndex
+        }
+    }
+    LaunchedEffect(isLandscape, selectedDayIndex) {
+        if (!isLandscape && selectedDayIndex == 6) {
+            onDaySelected(lastSingleDayIndex)
+        }
+    }
 
     val colorScheme = MaterialTheme.colorScheme
     val isTeacherMode = targetType == PreferencesRepository.TYPE_TEACHER
@@ -208,12 +231,19 @@ fun ArchiveScreen(
             .background(colorScheme.background)
     ) {
         // Top Unified Header Bar for Archive
-        val archiveDateLabel = remember(archiveSchedule?.weekStart, activeWeekIso, selectedWeek, selectedDayIndex) {
-            getArchiveDateLabel(
-                weekStartStr = archiveSchedule?.weekStart ?: activeWeekIso,
-                fallbackWeekOffset = selectedWeek,
-                dayIndex = selectedDayIndex
-            )
+        val archiveDateLabel = remember(archiveSchedule?.weekStart, activeWeekIso, selectedWeek, selectedDayIndex, isLandscape) {
+            if (isLandscape && selectedDayIndex == 6) {
+                ScheduleFormatter.getWeekRangeGenitiveLabel(
+                    weekStartStr = archiveSchedule?.weekStart ?: activeWeekIso,
+                    fallbackWeekOffset = selectedWeek
+                )
+            } else {
+                getArchiveDateLabel(
+                    weekStartStr = archiveSchedule?.weekStart ?: activeWeekIso,
+                    fallbackWeekOffset = selectedWeek,
+                    dayIndex = selectedDayIndex
+                )
+            }
         }
 
         Surface(
@@ -500,11 +530,38 @@ fun ArchiveScreen(
                     selectedDayIndex = selectedDayIndex,
                     currentDayIndex = -1,
                     dateLabel = archiveDateLabel,
+                    showAllOption = isLandscape,
                     onDaySelected = onDaySelected,
                     onDateClick = {
-                        val iso = getArchiveDateIso(archiveSchedule?.weekStart, selectedWeek, selectedDayIndex)
+                        val focusDayIdx = if (selectedDayIndex in 0..5) selectedDayIndex else 0
+                        val iso = getArchiveDateIso(archiveSchedule?.weekStart ?: activeWeekIso, selectedWeek, focusDayIdx)
                         onNavigateToCalendar(iso)
-                    }
+                    },
+                    trailingActionContent = if (isLandscape && selectedDayIndex == 6) {
+                        {
+                            IconButton(
+                                onClick = {
+                                    val textToCopy = ScheduleFormatter.formatWeekScheduleForCopy(
+                                        scheduleResponse = archiveSchedule,
+                                        fallbackWeekOffset = selectedWeek,
+                                        isTeacherMode = isTeacherMode,
+                                        targetName = targetName,
+                                        showPairsSetting = showPairsSchedule
+                                    )
+                                    clipboardManager.setText(AnnotatedString(textToCopy))
+                                    Toast.makeText(context, "Расписание недели скопировано", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_copy_content),
+                                    contentDescription = "Скопировать расписание недели",
+                                    tint = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    } else null
                 )
             }
         }
@@ -517,16 +574,14 @@ fun ArchiveScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(selectedDayIndex) {
+                .pointerInput(selectedDayIndex, isLandscape) {
                     detectHorizontalDragGestures(
                         onDragStart = { totalDragX = 0f },
                         onDragEnd = {
                             if (totalDragX < -60f) {
-                                val next = if (selectedDayIndex < 5) selectedDayIndex + 1 else 0
-                                onDaySelected(next)
+                                onDaySelected(DayCycleHelper.nextDay(selectedDayIndex, isLandscape))
                             } else if (totalDragX > 60f) {
-                                val prev = if (selectedDayIndex > 0) selectedDayIndex - 1 else 5
-                                onDaySelected(prev)
+                                onDaySelected(DayCycleHelper.prevDay(selectedDayIndex, isLandscape))
                             }
                         },
                         onHorizontalDrag = { _, dragAmount ->
@@ -544,7 +599,7 @@ fun ArchiveScreen(
                     targetState = selectedDayIndex,
                     transitionSpec = {
                         if (overlaySwipeAnimation) {
-                            val forward = if (initialState == 0 && targetState == 5) false else if (initialState == 5 && targetState == 0) true else targetState > initialState
+                            val forward = DayCycleHelper.isForwardTransition(initialState, targetState, isLandscape)
                             if (forward) {
                                 (slideInHorizontally(
                                     animationSpec = tween(300, easing = CubicBezierEasing(0.2f, 0f, 0f, 1f))
@@ -570,6 +625,20 @@ fun ArchiveScreen(
                     },
                     label = "archive_day_content"
                 ) { dayIdx ->
+                    if (dayIdx == 6 && isLandscape) {
+                        WeekScheduleTable(
+                            schedule = archiveSchedule,
+                            weekStartFallbackOffset = selectedWeek,
+                            isTeacherMode = isTeacherMode,
+                            targetName = targetName,
+                            showPairsSchedule = showPairsSchedule,
+                            activeDayIndex = -1,
+                            emptyText = "В архиве на эту неделю занятий не найдено",
+                            onDayClick = { clickedDay -> onDaySelected(clickedDay) },
+                            onDateClick = { dateIso -> onNavigateToCalendar(dateIso) },
+                            onTeacherClassClick = onTeacherClassClick
+                        )
+                    } else {
                     val daySchedule = archiveSchedule?.days?.firstOrNull { it.dayIndex == dayIdx }
                     val lessons = daySchedule?.lessons ?: emptyList()
 
@@ -613,7 +682,8 @@ fun ArchiveScreen(
                                                 change = changes.firstOrNull(),
                                                 changes = changes,
                                                 isActiveNow = false,
-                                                isTeacherMode = isTeacherMode
+                                                isTeacherMode = isTeacherMode,
+                                                onTeacherClassClick = onTeacherClassClick
                                             )
                                         }
                                         is ScheduleItemUi.CombinedPair -> {
@@ -624,7 +694,8 @@ fun ArchiveScreen(
                                                 changesL1 = changes1,
                                                 changesL2 = changes2,
                                                 isActiveNow = false,
-                                                isTeacherMode = isTeacherMode
+                                                isTeacherMode = isTeacherMode,
+                                                onTeacherClassClick = onTeacherClassClick
                                             )
                                         }
                                     }
@@ -637,7 +708,12 @@ fun ArchiveScreen(
 
                             // Static copy button in top-right corner over schedule
                             val dayNames = listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота")
-                            val fullDayTitle = "${dayNames.getOrElse(dayIdx) { "Понедельник" }}, $archiveDateLabel"
+                            val dayDateText = ScheduleFormatter.getDayDateGenitiveLabel(
+                                weekStartStr = archiveSchedule?.weekStart ?: activeWeekIso,
+                                dayIndex = dayIdx,
+                                fallbackWeekOffset = selectedWeek
+                            )
+                            val fullDayTitle = "${dayNames.getOrElse(dayIdx) { "Понедельник" }}, $dayDateText"
                             IconButton(
                                 onClick = {
                                     val textToCopy = ScheduleFormatter.formatScheduleForCopy(
@@ -665,6 +741,7 @@ fun ArchiveScreen(
                                 )
                             }
                         }
+                    }
                     }
                 }
             }

@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -229,7 +230,7 @@ class MainActivity : ComponentActivity() {
                     splashAnimated = true
                 }
 
-                var currentTab by remember { mutableIntStateOf(pendingNotificationTab ?: 0) }
+                var currentTab by rememberSaveable { mutableIntStateOf(pendingNotificationTab ?: 0) }
                 val syncState by app.yandexDiskSyncService.syncState.collectAsState()
                 var isYandexConnected by remember(prefs.yandexOAuthToken) { mutableStateOf(!prefs.yandexOAuthToken.isNullOrBlank()) }
                 var yandexUserLogin by remember(prefs.yandexUserLogin) { mutableStateOf(prefs.yandexUserLogin) }
@@ -278,7 +279,7 @@ class MainActivity : ComponentActivity() {
                 var isFavorite by remember { mutableStateOf(prefs.isFavorite(targetType, targetName)) }
 
                 val defaultDayIndex = BellSchedule.getDefaultScheduleDayIndex(Calendar.getInstance())
-                var selectedDayIndex by remember { mutableIntStateOf(pendingNotificationDayIndex ?: defaultDayIndex) }
+                var selectedDayIndex by rememberSaveable { mutableIntStateOf(pendingNotificationDayIndex ?: defaultDayIndex) }
 
                 var classesList by remember { mutableStateOf<List<ClassItem>>(emptyList()) }
                 var teachersList by remember { mutableStateOf<List<TeacherItem>>(emptyList()) }
@@ -288,8 +289,8 @@ class MainActivity : ComponentActivity() {
                 var eventsList by remember { mutableStateOf<List<CalendarEvent>>(emptyList()) }
                 var eventCategories by remember { mutableStateOf<List<EventCategory>>(emptyList()) }
 
-                var selectedArchiveWeek by remember { mutableIntStateOf(-1) }
-                var archiveDayIndex by remember { mutableIntStateOf(defaultDayIndex) }
+                var selectedArchiveWeek by rememberSaveable { mutableIntStateOf(-1) }
+                var archiveDayIndex by rememberSaveable { mutableIntStateOf(defaultDayIndex) }
 
                 val isVacation = VacationChecker.isVacation(this@MainActivity)
                 val currentLessonBell = BellSchedule.getCurrentBellState(Calendar.getInstance(), isVacation)
@@ -387,13 +388,13 @@ class MainActivity : ComponentActivity() {
 
                 // Reload current schedule
                 fun loadCurrentSchedule(type: String, name: String) {
+                    prefs.targetType = type
+                    prefs.targetName = name
+                    targetType = type
+                    targetName = name
+                    isFavorite = prefs.isFavorite(type, name)
                     scope.launch {
                         isLoading = true
-                        prefs.targetType = type
-                        prefs.targetName = name
-                        targetType = type
-                        targetName = name
-                        isFavorite = prefs.isFavorite(type, name)
                         // Instantly show cached schedule if background sync already updated it on disk
                         val cached = repo.getCachedSchedule(type, name, 0)
                         if (cached != null) {
@@ -440,9 +441,7 @@ class MainActivity : ComponentActivity() {
                 fun loadArchive(week: Int) {
                     selectedArchiveWeek = week
                     val cached = repo.getCachedSchedule(targetType, targetName, week)
-                    if (cached != null) {
-                        archiveSchedule = cached
-                    }
+                    archiveSchedule = cached
                     scope.launch {
                         if (cached == null) isLoading = true
                         val res = repo.getSchedule(targetType, targetName, week)
@@ -519,23 +518,44 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                val onTeacherClassClick: (String) -> Unit = { clickedName ->
-                    if (targetType == PreferencesRepository.TYPE_TEACHER) {
-                        val cleanClass = classesList.firstOrNull { it.name.equals(clickedName.trim(), ignoreCase = true) }?.name
-                            ?: clickedName.trim()
-                        loadCurrentSchedule(PreferencesRepository.TYPE_CLASS, cleanClass)
+                fun resolveOppositeTarget(clickedName: String): Pair<String, String> {
+                    val trimmed = clickedName.trim()
+                    return if (targetType == PreferencesRepository.TYPE_TEACHER) {
+                        val cleanClass = classesList.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }?.name
+                            ?: trimmed
+                        PreferencesRepository.TYPE_CLASS to cleanClass
                     } else {
-                        val cleanTeacher = teachersList.firstOrNull { it.name.equals(clickedName.trim(), ignoreCase = true) }?.name
-                            ?: teachersList.firstOrNull { it.name.contains(clickedName.trim(), ignoreCase = true) || clickedName.trim().contains(it.name, ignoreCase = true) }?.name
-                            ?: clickedName.trim()
-                        loadCurrentSchedule(PreferencesRepository.TYPE_TEACHER, cleanTeacher)
+                        val cleanTeacher = teachersList.firstOrNull { it.name.equals(trimmed, ignoreCase = true) }?.name
+                            ?: teachersList.firstOrNull { it.name.contains(trimmed, ignoreCase = true) || trimmed.contains(it.name, ignoreCase = true) }?.name
+                            ?: trimmed
+                        PreferencesRepository.TYPE_TEACHER to cleanTeacher
                     }
                 }
 
-                val onRoomClick: (String, Int) -> Unit = { room, lessonNum ->
-                    freeDayIndex = selectedDayIndex
+                val onTeacherClassClick: (String) -> Unit = { clickedName ->
+                    val (newType, cleanName) = resolveOppositeTarget(clickedName)
+                    loadCurrentSchedule(newType, cleanName)
+                }
+
+                val onArchiveTeacherClassClick: (String) -> Unit = { clickedName ->
+                    val (newType, cleanName) = resolveOppositeTarget(clickedName)
+                    loadCurrentSchedule(newType, cleanName)
+                    loadArchive(selectedArchiveWeek)
+                }
+
+                val onRoomClick: (String, Int) -> Unit = { _, lessonNum ->
+                    val day = if (selectedDayIndex in 0..5) selectedDayIndex else defaultDayIndex
+                    freeDayIndex = day
                     freeLessonNum = lessonNum
-                    loadFree(selectedDayIndex, lessonNum)
+                    loadFree(day, lessonNum)
+                    currentTab = 3
+                }
+
+                val onTableRoomClick: (Int, String, Int) -> Unit = { dayIdx, _, lessonNum ->
+                    val day = dayIdx.coerceIn(0, 5)
+                    freeDayIndex = day
+                    freeLessonNum = lessonNum
+                    loadFree(day, lessonNum)
                     currentTab = 3
                 }
 
@@ -775,6 +795,7 @@ class MainActivity : ComponentActivity() {
                                     onDaySelected = { selectedDayIndex = it },
                                     onTeacherClassClick = onTeacherClassClick,
                                     onRoomClick = onRoomClick,
+                                    onTableRoomClick = onTableRoomClick,
                                     onNavigateToNotes = { dateIso ->
                                         notesTargetDateFocus = dateIso
                                         currentTab = 2
@@ -891,6 +912,7 @@ class MainActivity : ComponentActivity() {
                                         loadArchive(selectedArchiveWeek)
                                     },
                                     onDaySelected = { archiveDayIndex = it },
+                                    onTeacherClassClick = onArchiveTeacherClassClick,
                                     onNavigateToCalendar = { dateIso ->
                                         calendarTargetDateFocus = dateIso
                                         currentTab = 1
