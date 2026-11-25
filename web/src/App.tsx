@@ -18,6 +18,7 @@ import { useScheduleStore } from './store/scheduleStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useNotesStore } from './store/notesStore';
 import { yandexSyncService } from './services/yandexSync';
+import { setClientConfig } from './api/client';
 
 export const App: React.FC = () => {
   useFavicon();
@@ -84,13 +85,15 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    const initialPrefs = usePreferencesStore.getState();
+    setClientConfig({ corsProxy: initialPrefs.corsProxy });
+
     // Check if returning from Yandex OAuth redirect
     yandexSyncService.handleAuthCallback();
 
     initBaseData();
     loadNotes();
-    const prefs = usePreferencesStore.getState();
-    loadSchedule(prefs.targetType, prefs.targetName, 0);
+    loadSchedule(initialPrefs.targetType, initialPrefs.targetName, 0);
 
     // Sync notes on startup if user is logged into Yandex
     const yState = yandexSyncService.getState();
@@ -109,19 +112,7 @@ export const App: React.FC = () => {
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
-
-    // Periodic background live refresh every 5 minutes while tab is active
-    const intervalId = window.setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        const p = usePreferencesStore.getState();
-        loadSchedule(p.targetType, p.targetName, 0);
-      }
-    }, 5 * 60 * 1000);
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      window.clearInterval(intervalId);
-    };
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, []);
 
   // Widget mode has its own stripped down layout

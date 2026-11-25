@@ -1,6 +1,6 @@
 // Network client with smart routing:
-// 1. In dev/preview environment (Vite): uses local /api-lyceum proxy (zero CORS issues!)
-// 2. In production (GitHub Pages): tries user configurable proxy or public CORS proxies
+// 1. In dev/preview environment (Vite): uses local /api-lyceum proxy (zero CORS issues, <300ms)
+// 2. In production (GitHub Pages / standalone): races direct API and configured CORS proxy
 
 // Dedicated Cloudflare Worker CORS proxy for Lyceum NSTU
 export const DEFAULT_PROXY_BASE = 'https://lyceum-proxy.dimafilippov1800.workers.dev';
@@ -12,7 +12,7 @@ export interface ClientConfig {
 
 export const defaultClientConfig: ClientConfig = {
   corsProxy: '', // Empty means use default proxy
-  timeoutMs: 15000,
+  timeoutMs: 12000,
 };
 
 let currentConfig = { ...defaultClientConfig };
@@ -25,17 +25,59 @@ export function getClientConfig(): ClientConfig {
   return currentConfig;
 }
 
-export type FetchMode = 'cache-first' | 'live-first' | 'live-only';
+function buildProxyUrl(proxyBase: string, targetUrl: string): string {
+  const cleanBase = proxyBase.trim().replace(/\/+$/, '');
+  if (cleanBase.includes('?url=') || cleanBase.includes('?quest=')) {
+    return `${cleanBase}${encodeURIComponent(targetUrl)}`;
+  }
+  if (cleanBase.endsWith('/proxy-url')) {
+    return `${cleanBase}?url=${encodeURIComponent(targetUrl)}`;
+  }
+  return `${cleanBase}/proxy-url?url=${encodeURIComponent(targetUrl)}`;
+}
+
+async function fetchJsonWithTimeout<T>(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number,
+  externalSignal?: AbortSignal
+): Promise<T> {
+  const controller = new AbortController();
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
+
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      ...options,
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onExternalAbort);
+    }
+  }
+}
 
 export async function fetchWithProxy<T>(
   endpoint: string,
-  options: RequestInit = {},
-  mode: FetchMode = 'cache-first',
-  timeoutMsOverride?: number
+  options: RequestInit = {}
 ): Promise<T> {
   const cleanEndpoint = endpoint.replace(/^\//, '');
 
-  // Detect if we are on localhost or dev server
   const isLocalhost =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' ||
@@ -43,120 +85,48 @@ export async function fetchWithProxy<T>(
       window.location.hostname.startsWith('192.168.') ||
       window.location.hostname.startsWith('26.'));
 
-  // Helper to map API endpoint to static pre-built GitHub Pages cache
-  const getStaticCacheUrl = (ep: string): string | null => {
-    const basePath = import.meta.env.BASE_URL || '/';
-    const cleanBase = basePath.endsWith('/') ? basePath : `${basePath}/`;
-
-    if (ep === 'schedule/classes') {
-      return `${cleanBase}data/classes.json`;
-    }
-    if (ep === 'schedule/teachers') {
-      return `${cleanBase}data/teachers.json`;
-    }
-    if (ep === 'events') {
-      return `${cleanBase}data/events.json`;
-    }
-    if (ep === 'schedule/archive') {
-      return `${cleanBase}data/archive.json`;
-    }
-    if (ep === 'schedule/availability-grid') {
-      return `${cleanBase}data/availability_grid.json`;
-    }
-    const classMatch = ep.match(/^schedule\/class\/([^?]+)(?:\?week=([-\d]+))?$/);
-    if (classMatch) {
-      const rawName = classMatch[1];
-      let decodedName = rawName;
-      try {
-        decodedName = decodeURIComponent(rawName);
-      } catch {
-        // ignore
-      }
-      const encodedName = encodeURIComponent(decodedName);
-      const week = classMatch[2] || '0';
-      if (week === '0') {
-        // Return encoded URL path (standard for browsers / web servers)
-        return `${cleanBase}data/class/${encodedName}.json`;
-      }
-      if (['-1', '-2', '-3'].includes(week)) {
-        return `${cleanBase}data/archive/week_${week}/${encodedName}.json`;
-      }
-    }
-    const teacherMatch = ep.match(/^schedule\/teacher\/([^?]+)(?:\?week=([-\d]+))?$/);
-    if (teacherMatch) {
-      const rawName = teacherMatch[1];
-      let decodedName = rawName;
-      try {
-        decodedName = decodeURIComponent(rawName);
-      } catch {
-        // ignore
-      }
-      const encodedName = encodeURIComponent(decodedName);
-      const week = teacherMatch[2] || '0';
-      if (week === '0') {
-        return `${cleanBase}data/teacher/${encodedName}.json`;
-      }
-    }
-    return null;
-  };
-
-  const staticCacheUrl = getStaticCacheUrl(cleanEndpoint);
-
-  // Priority URLs to try
-  const urlsToTry: string[] = [];
-
-  if (mode === 'cache-first' && staticCacheUrl && options.method !== 'POST') {
-    // 1. Static pre-built GitHub Pages cache for instant <20ms initial render
-    urlsToTry.push(staticCacheUrl);
-  }
-
+  // 1. In local dev server, vite /api-lyceum proxy hits lyceum.nstu.ru directly without CORS
   if (isLocalhost) {
-    // Local dev server vite proxy works directly without CORS
-    urlsToTry.push(`/api-lyceum/${cleanEndpoint}`);
-  }
-
-  // High-speed custom Cloudflare Worker proxy via /proxy-url (live data)
-  const proxyBase = currentConfig.corsProxy || DEFAULT_PROXY_BASE;
-  const cleanBase = proxyBase.replace(/\/+$/, '');
-  const targetLyceumUrl = `https://lyceum.nstu.ru/info/api/${cleanEndpoint}`;
-  urlsToTry.push(`${cleanBase}/proxy-url?url=${encodeURIComponent(targetLyceumUrl)}`);
-
-  // Direct Lyceum API (works where CORS is not enforced or in standalone environments)
-  urlsToTry.push(targetLyceumUrl);
-
-  if (mode === 'live-first' && staticCacheUrl && !urlsToTry.includes(staticCacheUrl) && options.method !== 'POST') {
-    urlsToTry.push(staticCacheUrl);
-  }
-
-  let lastError: unknown = null;
-  const effectiveTimeout = timeoutMsOverride ?? (mode === 'live-only' ? 7000 : currentConfig.timeoutMs);
-
-  for (const url of urlsToTry) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), effectiveTimeout);
-
     try {
-      const isLiveRemote = url !== staticCacheUrl;
-      const res = await fetch(url, {
-        ...options,
-        cache: isLiveRemote && mode !== 'cache-first' ? 'no-store' : options.cache,
-        signal: controller.signal,
-        headers: {
-          Accept: 'application/json',
-          ...(options.headers || {}),
-        },
-      });
-
-      clearTimeout(timer);
-
-      if (res.ok) {
-        return (await res.json()) as T;
-      }
-    } catch (err) {
-      clearTimeout(timer);
-      lastError = err;
+      return await fetchJsonWithTimeout<T>(
+        `/api-lyceum/${cleanEndpoint}`,
+        options,
+        currentConfig.timeoutMs
+      );
+    } catch {
+      // Fallback to remote proxy/direct (e.g. during vite preview where dev proxy is inactive)
     }
   }
 
-  throw lastError || new Error('Failed to fetch schedule data');
+  // 2. Race direct Lyceum API against configured CORS proxy:
+  // - If CORS is allowed/disabled (WebView/desktop/extension), direct wins in ~70-300ms
+  // - Otherwise direct fails CORS in ~100ms and Promise.any keeps waiting on the proxy
+  const targetLyceumUrl = `https://lyceum.nstu.ru/info/api/${cleanEndpoint}`;
+  const proxyUrl = buildProxyUrl(
+    currentConfig.corsProxy || DEFAULT_PROXY_BASE,
+    targetLyceumUrl
+  );
+
+  const raceController = new AbortController();
+  try {
+    const result = await Promise.any([
+      fetchJsonWithTimeout<T>(
+        targetLyceumUrl,
+        options,
+        currentConfig.timeoutMs,
+        raceController.signal
+      ),
+      fetchJsonWithTimeout<T>(
+        proxyUrl,
+        options,
+        currentConfig.timeoutMs,
+        raceController.signal
+      ),
+    ]);
+    raceController.abort();
+    return result;
+  } catch (err) {
+    raceController.abort();
+    throw err instanceof Error ? err : new Error('Failed to fetch schedule data');
+  }
 }

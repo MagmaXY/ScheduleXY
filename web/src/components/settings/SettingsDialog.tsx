@@ -516,6 +516,31 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
               </div>
             </div>
           </div>
+
+          {/* Section: Network / CORS Proxy */}
+          <div className="pt-2 border-t border-[var(--md-border-light)]">
+            <h4 className="font-bold text-xs text-[var(--md-text-muted)] mb-2">
+              CORS прокси для API
+            </h4>
+            <div className="p-3 rounded-2xl bg-[var(--md-surface-variant)]/50">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={proxyInput}
+                  onChange={(e) => setProxyInput(e.target.value)}
+                  placeholder="https://lyceum-proxy.dimafilippov1800.workers.dev"
+                  className="flex-1 px-3 py-1.5 bg-[var(--md-surface)] border border-[var(--md-border)] rounded-xl text-xs outline-none text-[var(--md-text-primary)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCorsProxy(proxyInput)}
+                  className="px-3 py-1.5 bg-[var(--nika-subject)] text-[var(--md-on-primary)] text-xs font-bold rounded-xl"
+                >
+                  ОК
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

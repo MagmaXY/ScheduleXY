@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { setClientConfig } from '../api/client';
 
 export type ThemePreset = 'classic' | 'emerald' | 'dynamic' | 'oled';
 export type TargetType = 'class' | 'teacher';
@@ -108,7 +109,10 @@ export const usePreferencesStore = create<PreferencesState>()(
       setCopyIncludeNotes: (val) => set({ copyIncludeNotes: val }),
       setUseMagmaLogo: (val) => set({ useMagmaLogo: val }),
       setIsMagmaUnlocked: (val) => set({ isMagmaUnlocked: val }),
-      setCorsProxy: (proxy) => set({ corsProxy: proxy }),
+      setCorsProxy: (proxy) => {
+        setClientConfig({ corsProxy: proxy });
+        set({ corsProxy: proxy });
+      },
       setNotificationsEnabled: (val) => set({ notificationsEnabled: val }),
 
       isMiddleSchoolClass: (name) => {

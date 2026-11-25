@@ -8,39 +8,26 @@ import {
   ScheduleResponse,
   TeachersResponse,
 } from '../types/api';
-import { SlotOccupancy } from '../domain/freeAvailabilityEngine';
-import { FetchMode, fetchWithProxy } from './client';
+import { fetchWithProxy } from './client';
 
 export const lyceumApi = {
-  getClasses: (mode: FetchMode = 'cache-first'): Promise<ClassesResponse> => {
-    return fetchWithProxy<ClassesResponse>('schedule/classes', {}, mode);
+  getClasses: (): Promise<ClassesResponse> => {
+    return fetchWithProxy<ClassesResponse>('schedule/classes');
   },
 
-  getTeachers: (mode: FetchMode = 'cache-first'): Promise<TeachersResponse> => {
-    return fetchWithProxy<TeachersResponse>('schedule/teachers', {}, mode);
+  getTeachers: (): Promise<TeachersResponse> => {
+    return fetchWithProxy<TeachersResponse>('schedule/teachers');
   },
 
-  getClassSchedule: (
-    name: string,
-    week = 0,
-    mode: FetchMode = 'cache-first'
-  ): Promise<ScheduleResponse> => {
+  getClassSchedule: (name: string, week = 0): Promise<ScheduleResponse> => {
     return fetchWithProxy<ScheduleResponse>(
-      `schedule/class/${encodeURIComponent(name)}?week=${week}`,
-      {},
-      mode
+      `schedule/class/${encodeURIComponent(name)}?week=${week}`
     );
   },
 
-  getTeacherSchedule: (
-    name: string,
-    week = 0,
-    mode: FetchMode = 'cache-first'
-  ): Promise<ScheduleResponse> => {
+  getTeacherSchedule: (name: string, week = 0): Promise<ScheduleResponse> => {
     return fetchWithProxy<ScheduleResponse>(
-      `schedule/teacher/${encodeURIComponent(name)}?week=${week}`,
-      {},
-      mode
+      `schedule/teacher/${encodeURIComponent(name)}?week=${week}`
     );
   },
 
@@ -56,16 +43,12 @@ export const lyceumApi = {
     });
   },
 
-  getArchiveWeeks: (mode: FetchMode = 'cache-first'): Promise<ArchiveResponse> => {
-    return fetchWithProxy<ArchiveResponse>('schedule/archive', {}, mode);
+  getArchiveWeeks: (): Promise<ArchiveResponse> => {
+    return fetchWithProxy<ArchiveResponse>('schedule/archive');
   },
 
-  getAvailabilityGrid: (): Promise<Record<string, SlotOccupancy>> => {
-    return fetchWithProxy<Record<string, SlotOccupancy>>('schedule/availability-grid');
-  },
-
-  getEvents: (mode: FetchMode = 'cache-first'): Promise<EventsResponse> => {
-    return fetchWithProxy<EventsResponse>('events', {}, mode);
+  getEvents: (): Promise<EventsResponse> => {
+    return fetchWithProxy<EventsResponse>('events');
   },
 
   checkAdminPassword: (adminPassword: string): Promise<AdminCheckResponse> => {
