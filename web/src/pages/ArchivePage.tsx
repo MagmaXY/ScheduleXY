@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScheduleStore } from '../store/scheduleStore';
 import { usePreferencesStore } from '../store/preferencesStore';
@@ -6,6 +6,7 @@ import { TargetSelector } from '../components/schedule/TargetSelector';
 import { DaySelector } from '../components/common/DaySelector';
 import { LessonCard } from '../components/schedule/LessonCard';
 import { PairCard } from '../components/schedule/PairCard';
+import { WeekScheduleTable } from '../components/schedule/WeekScheduleTable';
 import { processLessons } from '../domain/schedulePairMerger';
 import { getChangesForLesson, isScheduleForTeacher } from '../types/api';
 import { Calendar } from 'lucide-react';
@@ -47,6 +48,7 @@ export const ArchivePage: React.FC = () => {
 
   const targetName = usePreferencesStore((s) => s.targetName);
   const showPairsSchedule = usePreferencesStore((s) => s.showPairsSchedule);
+  const [isWeekView, setIsWeekView] = useState(false);
 
   const isTeacher = isScheduleForTeacher(archiveSchedule);
   const daySchedule = archiveSchedule?.days?.find(
@@ -140,21 +142,41 @@ export const ArchivePage: React.FC = () => {
     return `${y}-${m}-${d}`;
   };
 
-  // Arrow key and Digit hotkey navigation for archive days (1..6)
+  // Arrow key and Digit hotkey navigation: PC (1 = Вся, 2-7 = Пн-Сб), Mobile (1-6 = Пн-Сб)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const isDesktop = window.innerWidth >= 1024;
       if (e.key === 'ArrowRight') {
-        setArchiveDayIndex(archiveDayIndex < 5 ? archiveDayIndex + 1 : 0);
+        if (isDesktop && isWeekView) {
+          setIsWeekView(false);
+          setArchiveDayIndex(0);
+        } else {
+          setArchiveDayIndex(archiveDayIndex < 5 ? archiveDayIndex + 1 : 0);
+        }
       } else if (e.key === 'ArrowLeft') {
-        setArchiveDayIndex(archiveDayIndex > 0 ? archiveDayIndex - 1 : 5);
+        if (isDesktop && isWeekView) {
+          setIsWeekView(false);
+          setArchiveDayIndex(5);
+        } else {
+          setArchiveDayIndex(archiveDayIndex > 0 ? archiveDayIndex - 1 : 5);
+        }
+      } else if (isDesktop) {
+        if (e.key === '1') {
+          setIsWeekView(true);
+        } else if (e.key >= '2' && e.key <= '7') {
+          setIsWeekView(false);
+          setArchiveDayIndex(parseInt(e.key, 10) - 2);
+        }
       } else if (e.key >= '1' && e.key <= '6') {
         setArchiveDayIndex(parseInt(e.key, 10) - 1);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [archiveDayIndex, setArchiveDayIndex]);
+  }, [archiveDayIndex, setArchiveDayIndex, isWeekView]);
 
   // Touch and LMB mouse drag swipe handling
   const swipeHandlers = useSwipeGesture({
@@ -169,7 +191,9 @@ export const ArchivePage: React.FC = () => {
   return (
     <div
       {...swipeHandlers}
-      className="w-full max-w-4xl mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
+      className={`w-full mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative border-[var(--md-border-light)] ${
+        isWeekView ? 'max-w-4xl lg:max-w-none lg:border-x-0' : 'max-w-4xl lg:border-x'
+      }`}
     >
       {/* Top Unified Header Bar for Archive: Classes/Teachers, Target Box, Archive Week Switcher */}
       <div className="px-3 pt-3 pb-2 bg-[var(--md-surface)]">
@@ -219,13 +243,19 @@ export const ArchivePage: React.FC = () => {
             selectedDayIndex={archiveDayIndex}
             currentDayIndex={-1}
             dateLabel={getArchiveDateLabel()}
-            onDaySelected={setArchiveDayIndex}
+            isWeekView={isWeekView}
+            weekRangeLabel={activeWeekOption?.label}
+            onSelectWeekView={() => setIsWeekView(true)}
+            onDaySelected={(day) => {
+              setIsWeekView(false);
+              setArchiveDayIndex(day);
+            }}
             onDateClick={() => {
               navigate('/calendar', { state: { date: getArchiveIso() } });
             }}
           />
 
-          <div className="flex-1 bg-[var(--md-surface)] mt-1">
+          <div className="flex-1 bg-[var(--md-surface)] mt-1 flex flex-col">
             {isLoading ? (
               <div className="py-20 text-center">
                 <div className="w-8 h-8 border-2 border-[var(--nika-subject)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -233,62 +263,84 @@ export const ArchivePage: React.FC = () => {
                   Загрузка архивного расписания...
                 </p>
               </div>
-            ) : processedItems.length === 0 ? (
-              <div className="py-16 text-center">
-                <p className="text-sm font-bold text-[var(--md-text-primary)]">
-                  Нет занятий в выбранный день
-                </p>
-              </div>
             ) : (
-              <div className="divide-y divide-[var(--md-border-light)]">
-                {processedItems.map((item, idx) => {
-                  if (item.type === 'pair') {
-                    const ch1 = getChangesForLesson(
-                      archiveSchedule,
-                      archiveDayIndex,
-                      item.firstLesson.num
-                    );
-                    const ch2 = getChangesForLesson(
-                      archiveSchedule,
-                      archiveDayIndex,
-                      item.secondLesson.num
-                    );
-
-                    return (
-                      <PairCard
-                        key={idx}
-                        pairNum={item.pairNum}
-                        pairRoman={item.pairRoman}
-                        pairTimes={item.pairTimes}
-                        firstLesson={item.firstLesson}
-                        secondLesson={item.secondLesson}
-                        dayIndex={archiveDayIndex}
-                        changes1={ch1}
-                        changes2={ch2}
-                        isTeacherMode={isTeacher}
-                        isActiveNow={false}
-                      />
-                    );
-                  }
-
-                  const ch = getChangesForLesson(
-                    archiveSchedule,
-                    archiveDayIndex,
-                    item.lesson.num
-                  );
-
-                  return (
-                    <LessonCard
-                      key={idx}
-                      lesson={item.lesson}
-                      dayIndex={archiveDayIndex}
-                      changes={ch}
-                      isTeacherMode={isTeacher}
-                      isActiveNow={false}
+              <>
+                {isWeekView && (
+                  <div className="hidden lg:flex lg:flex-col lg:flex-1">
+                    <WeekScheduleTable
+                      schedule={archiveSchedule}
+                      targetName={targetName}
+                      showPairsSchedule={showPairsSchedule}
+                      weekOffset={selectedArchiveWeek}
+                      onDayHeaderClick={(dayIdx) => {
+                        setIsWeekView(false);
+                        setArchiveDayIndex(dayIdx);
+                      }}
+                      onDateClick={(dateIso) => navigate('/calendar', { state: { date: dateIso } })}
                     />
-                  );
-                })}
-              </div>
+                  </div>
+                )}
+
+                <div className={isWeekView ? 'lg:hidden flex-1 flex flex-col' : 'flex-1 flex flex-col'}>
+                  {processedItems.length === 0 ? (
+                    <div className="py-16 text-center">
+                      <p className="text-sm font-bold text-[var(--md-text-primary)]">
+                        Нет занятий в выбранный день
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-[var(--md-border-light)]">
+                      {processedItems.map((item, idx) => {
+                        if (item.type === 'pair') {
+                          const ch1 = getChangesForLesson(
+                            archiveSchedule,
+                            archiveDayIndex,
+                            item.firstLesson.num
+                          );
+                          const ch2 = getChangesForLesson(
+                            archiveSchedule,
+                            archiveDayIndex,
+                            item.secondLesson.num
+                          );
+
+                          return (
+                            <PairCard
+                              key={idx}
+                              pairNum={item.pairNum}
+                              pairRoman={item.pairRoman}
+                              pairTimes={item.pairTimes}
+                              firstLesson={item.firstLesson}
+                              secondLesson={item.secondLesson}
+                              dayIndex={archiveDayIndex}
+                              changes1={ch1}
+                              changes2={ch2}
+                              isTeacherMode={isTeacher}
+                              isActiveNow={false}
+                            />
+                          );
+                        }
+
+                        const ch = getChangesForLesson(
+                          archiveSchedule,
+                          archiveDayIndex,
+                          item.lesson.num
+                        );
+
+                        return (
+                          <LessonCard
+                            key={idx}
+                            lesson={item.lesson}
+                            dayIndex={archiveDayIndex}
+                            changes={ch}
+                            isTeacherMode={isTeacher}
+                            isActiveNow={false}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </>

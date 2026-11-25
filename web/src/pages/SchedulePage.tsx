@@ -4,6 +4,7 @@ import { TargetSelector } from '../components/schedule/TargetSelector';
 import { DaySelector } from '../components/common/DaySelector';
 import { LessonCard } from '../components/schedule/LessonCard';
 import { PairCard } from '../components/schedule/PairCard';
+import { WeekScheduleTable } from '../components/schedule/WeekScheduleTable';
 import { NoteEditDialog } from '../components/notes/NoteEditDialog';
 import { useScheduleStore } from '../store/scheduleStore';
 import { toLocalDateIso, parseLocalDate } from '../utils/dateUtils';
@@ -41,6 +42,8 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [noteInitialSubject, setNoteInitialSubject] = useState('');
   const [noteInitialLessonNum, setNoteInitialLessonNum] = useState<number | null>(null);
+  const [noteInitialDateIso, setNoteInitialDateIso] = useState<string | null>(null);
+  const [isWeekView, setIsWeekView] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const isTeacher = isScheduleForTeacher(currentSchedule);
@@ -86,6 +89,25 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
 
   const currentDateIso = getIsoDate();
   const dateLabel = getDateLabel();
+
+  const getWeekRangeLabel = (): string => {
+    let mon: Date;
+    if (currentSchedule?.weekStart) {
+      mon = parseLocalDate(currentSchedule.weekStart);
+    } else {
+      mon = new Date();
+      const dow = (mon.getDay() + 6) % 7;
+      mon.setDate(mon.getDate() - dow);
+    }
+    const sat = new Date(mon);
+    sat.setDate(mon.getDate() + 5);
+    const m1 = mon.toLocaleDateString('ru-RU', { month: 'long' });
+    const m2 = sat.toLocaleDateString('ru-RU', { month: 'long' });
+    return m1 === m2
+      ? `${mon.getDate()}–${sat.getDate()} ${m2}`
+      : `${mon.getDate()} ${m1}–${sat.getDate()} ${m2}`;
+  };
+  const weekRangeLabel = getWeekRangeLabel();
 
   const todayIso = toLocalDateIso();
   const isThisWeek = (() => {
@@ -141,8 +163,28 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleRoomClick = (room: string, lessonNum: number) => {
-    navigate(`/freerooms?day=${selectedDayIndex}&lesson=${lessonNum}&room=${encodeURIComponent(room)}`);
+  const handleCopyWeekSchedule = () => {
+    if (!currentSchedule?.days) return;
+    const blocks: string[] = [`📅 Неделя (${weekRangeLabel}) — ${targetName}`];
+    for (let dIdx = 0; dIdx < 6; dIdx++) {
+      const ds = currentSchedule.days.find((d) => d.dayIndex === dIdx);
+      if (!ds || ds.lessons.length === 0) continue;
+      blocks.push(`\n— ${ds.dayName} —`);
+      ds.lessons.forEach((l) => {
+        const subj = l.subgroups.map((s) => s.subject).filter(Boolean).join(' / ') || '—';
+        const room = l.subgroups.map((s) => s.room).filter(Boolean).join(', ') || '';
+        const teacher = l.subgroups.map((s) => s.teacher).filter(Boolean).join(', ') || '';
+        const info = [teacher, room ? `каб. ${room}` : ''].filter(Boolean).join(', ');
+        blocks.push(`${l.num}. ${subj}${info ? ` (${info})` : ''}`);
+      });
+    }
+    navigator.clipboard.writeText(blocks.join('\n'));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRoomClick = (room: string, lessonNum: number, dayIdx: number = selectedDayIndex) => {
+    navigate(`/freerooms?day=${dayIdx}&lesson=${lessonNum}&room=${encodeURIComponent(room)}`);
   };
 
   const handleTeacherClassClick = (name: string) => {
@@ -162,22 +204,42 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
     navigate('/calendar', { state: { date: currentDateIso } });
   };
 
-  // Arrow key and Digit hotkey navigation for days (1..6)
+  // Arrow key and Digit hotkey navigation: PC (1 = Вся, 2-7 = Пн-Сб), Mobile (1-6 = Пн-Сб)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
+      if (dialogOpen) return;
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const isDesktop = window.innerWidth >= 1024;
       if (e.key === 'ArrowRight') {
-        setSelectedDayIndex(selectedDayIndex < 5 ? selectedDayIndex + 1 : 0);
+        if (isDesktop && isWeekView) {
+          setIsWeekView(false);
+          setSelectedDayIndex(0);
+        } else {
+          setSelectedDayIndex(selectedDayIndex < 5 ? selectedDayIndex + 1 : 0);
+        }
       } else if (e.key === 'ArrowLeft') {
-        setSelectedDayIndex(selectedDayIndex > 0 ? selectedDayIndex - 1 : 5);
+        if (isDesktop && isWeekView) {
+          setIsWeekView(false);
+          setSelectedDayIndex(5);
+        } else {
+          setSelectedDayIndex(selectedDayIndex > 0 ? selectedDayIndex - 1 : 5);
+        }
+      } else if (isDesktop) {
+        if (e.key === '1') {
+          setIsWeekView(true);
+        } else if (e.key >= '2' && e.key <= '7') {
+          setIsWeekView(false);
+          setSelectedDayIndex(parseInt(e.key, 10) - 2);
+        }
       } else if (e.key >= '1' && e.key <= '6') {
         setSelectedDayIndex(parseInt(e.key, 10) - 1);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedDayIndex, setSelectedDayIndex]);
+  }, [selectedDayIndex, setSelectedDayIndex, isWeekView, dialogOpen]);
 
   // Touch and LMB mouse drag swipe handling
   const swipeHandlers = useSwipeGesture({
@@ -192,24 +254,59 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
   return (
     <div
       {...swipeHandlers}
-      className="w-full max-w-4xl mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
+      className={`w-full mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative border-[var(--md-border-light)] ${
+        isWeekView ? 'max-w-4xl lg:max-w-none lg:border-x-0' : 'max-w-4xl lg:border-x'
+      }`}
     >
       {/* 1. Target Selector Header */}
       <div className="px-3 pt-2.5 pb-1.5 bg-[var(--md-surface)]">
         <TargetSelector onTargetChanged={() => loadSchedule()} />
       </div>
 
-      {/* 2. Unified Day Selector with Clickable Date */}
+      {/* 2. Unified Day Selector with Clickable Date & PC "Вся" button */}
       <DaySelector
         selectedDayIndex={selectedDayIndex}
         currentDayIndex={activeDayIndex}
         dateLabel={dateLabel}
-        onDaySelected={setSelectedDayIndex}
+        isWeekView={isWeekView}
+        weekRangeLabel={weekRangeLabel}
+        onSelectWeekView={() => setIsWeekView(true)}
+        onDaySelected={(day) => {
+          setIsWeekView(false);
+          setSelectedDayIndex(day);
+        }}
         onDateClick={handleDateClick}
+        weekActions={
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={handleCopyWeekSchedule}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/60 transition-all"
+              title="Скопировать расписание на неделю"
+            >
+              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            </button>
+            {!isTeacher && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNoteInitialDateIso(currentDateIso);
+                  setNoteInitialLessonNum(null);
+                  setNoteInitialSubject('');
+                  setDialogOpen(true);
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-[var(--md-text-secondary)] hover:text-[var(--md-text-primary)] hover:bg-[var(--md-surface-variant)]/60 transition-all"
+                title="Записать ДЗ или заметку"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        }
       />
 
-      {/* 3. Floating Copy & Note Action Icons lowered down well below the day selector */}
-      <div className="absolute right-2 top-[138px] z-20 flex flex-col items-center gap-1">
+      {/* 3. Floating Copy & Note Action Icons lowered down well below the day selector (hidden in PC week view) */}
+      <div className={`absolute right-2 top-[138px] z-20 flex flex-col items-center gap-1 ${isWeekView ? 'lg:hidden' : ''}`}>
         {/* Copy button */}
         <button
           onClick={handleCopySchedule}
@@ -223,6 +320,7 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
         {!isTeacher && (
           <button
             onClick={() => {
+              setNoteInitialDateIso(currentDateIso);
               setNoteInitialLessonNum(null);
               setNoteInitialSubject('');
               setDialogOpen(true);
@@ -235,8 +333,8 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
         )}
       </div>
 
-      {/* 4. Lessons / Pairs List with embedded Before/After notes aligned with lesson content */}
-      <div className="flex-1 bg-[var(--md-surface)]">
+      {/* 4. Lessons / Pairs List or PC Weekly Table */}
+      <div className="flex-1 bg-[var(--md-surface)] flex flex-col">
         {isLoading ? (
           <div className="py-20 text-center">
             <div className="w-8 h-8 border-2 border-[var(--nika-subject)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -244,17 +342,52 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
               Загрузка расписания...
             </p>
           </div>
-        ) : processedItems.length === 0 ? (
-          <div className="py-20 text-center px-4">
-            <p className="text-sm font-bold text-[var(--md-text-primary)]">
-              В этот день занятий нет
-            </p>
-            <p className="text-xs text-[var(--md-text-muted)] mt-1">
-              Отдыхайте или выберите другой день недели
-            </p>
-          </div>
         ) : (
-          <div className="divide-y divide-[var(--md-border-light)]">
+          <>
+            {isWeekView && (
+              <div className="hidden lg:flex lg:flex-col lg:flex-1">
+                <WeekScheduleTable
+                  schedule={currentSchedule}
+                  targetName={targetName}
+                  showPairsSchedule={showPairsSchedule}
+                  realtimeState={realtimeState}
+                  activeDayIndex={activeDayIndex}
+                  isThisWeek={isThisWeek}
+                  notes={notes}
+                  onToggleNoteCompleted={toggleCompleted}
+                  onTeacherClassClick={handleTeacherClassClick}
+                  onRoomClick={handleRoomClick}
+                  onCellClick={
+                    !isTeacher
+                      ? (_dayIdx, lessonNum, subject, dateIso) => {
+                          setNoteInitialDateIso(dateIso);
+                          setNoteInitialLessonNum(lessonNum);
+                          setNoteInitialSubject(subject);
+                          setDialogOpen(true);
+                        }
+                      : undefined
+                  }
+                  onDayHeaderClick={(dayIdx) => {
+                    setIsWeekView(false);
+                    setSelectedDayIndex(dayIdx);
+                  }}
+                  onDateClick={(dateIso) => navigate('/calendar', { state: { date: dateIso } })}
+                />
+              </div>
+            )}
+
+            <div className={isWeekView ? 'lg:hidden flex-1 flex flex-col' : 'flex-1 flex flex-col'}>
+              {processedItems.length === 0 ? (
+                <div className="py-20 text-center px-4">
+                  <p className="text-sm font-bold text-[var(--md-text-primary)]">
+                    В этот день занятий нет
+                  </p>
+                  <p className="text-xs text-[var(--md-text-muted)] mt-1">
+                    Отдыхайте или выберите другой день недели
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[var(--md-border-light)]">
             {/* "До уроков" Note Slot */}
             {beforeLessonsNote && (
               <div
@@ -393,6 +526,7 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
                   onClick={
                     !isTeacher
                       ? () => {
+                          setNoteInitialDateIso(currentDateIso);
                           setNoteInitialLessonNum(item.lesson.num);
                           setNoteInitialSubject(
                             item.lesson.subgroups[0]?.subject || ''
@@ -436,6 +570,9 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
               </div>
             )}
           </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 
@@ -443,11 +580,14 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
       {dialogOpen && (
         <NoteEditDialog
           targetName={targetName}
-          initialDate={currentDateIso}
+          initialDate={noteInitialDateIso || currentDateIso}
           initialSubject={noteInitialSubject}
           initialLessonNum={noteInitialLessonNum}
           onSave={addNote}
-          onClose={() => setDialogOpen(false)}
+          onClose={() => {
+            setDialogOpen(false);
+            setNoteInitialDateIso(null);
+          }}
         />
       )}
     </div>

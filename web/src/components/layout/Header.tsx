@@ -94,7 +94,7 @@ export const Header: React.FC<Props> = ({
 
   return (
     <header className="sticky top-0 z-30 bg-[var(--md-surface)] border-b border-[var(--md-border-light)] safe-top transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div className="max-w-4xl mx-auto px-3.5 py-1.5 flex flex-col lg:border-x border-[var(--md-border-light)]">
+      <div className="max-w-4xl lg:max-w-none mx-auto px-3.5 lg:px-5 py-1.5 flex flex-col lg:border-x-0 border-[var(--md-border-light)]">
         {/* Main Top Bar */}
         <div className="flex items-center justify-between">
           {/* Left: Logo & Permanent School Title */}

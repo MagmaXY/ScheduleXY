@@ -9,7 +9,18 @@ import { useSwipeGesture } from '../hooks/useSwipeGesture';
 import { searchNotes, searchEvents } from '../utils/smartSearch';
 import { NoteEditDialog } from '../components/notes/NoteEditDialog';
 import { ScheduleNote } from '../types/notes';
-import { toLocalDateIso, parseLocalDate } from '../utils/dateUtils';
+import { toLocalDateIso, parseLocalDate, addDaysToIso } from '../utils/dateUtils';
+import { CalendarEvent } from '../types/api';
+
+const EVENT_DOT_COLORS: Record<string, string> = {
+  blue: '#2563EB',
+  green: '#059669',
+  red: '#DC2626',
+  orange: '#D97706',
+  purple: '#9333EA',
+  yellow: '#CA8A04',
+  cyan: '#0891B2',
+};
 
 function formatArchiveWeekChip(isoMonday: string): string {
   try {
@@ -226,7 +237,12 @@ export const CalendarPage: React.FC = () => {
     onSwipeRight: prevMonth,
   });
 
-  // Filtered notes and events matching Android CalendarScreen.kt
+  // Filtered notes and events:
+  // 1) For specific date (selectedDateString || todayIso)
+  // 2) Upcoming events/notes for the next 21 days (3 weeks)
+  const activeDateIso = selectedDateString || todayIso;
+  const upcomingEndIso = React.useMemo(() => addDaysToIso(todayIso, 21), [todayIso]);
+
   const isNoteCategory = selectedCategory && ['CAT_HW', 'CAT_NOTES', 'CAT_DEBTS'].includes(selectedCategory);
   const isEventColorCategory = selectedCategory && !isNoteCategory;
 
@@ -234,42 +250,236 @@ export const CalendarPage: React.FC = () => {
     return notes.filter((n) => n.targetName === targetName);
   }, [notes, targetName]);
 
+  const matchesNoteCategory = React.useCallback(
+    (note: ScheduleNote) => {
+      if (selectedCategory === 'CAT_HW') return note.type === 'homework';
+      if (selectedCategory === 'CAT_NOTES') return note.type === 'note';
+      if (selectedCategory === 'CAT_DEBTS') {
+        return note.type === 'homework' && !note.isCompleted && (note.date < todayIso || note.transferPending);
+      }
+      return true;
+    },
+    [selectedCategory, todayIso]
+  );
+
   const displayedNotes = React.useMemo(() => {
     if (isEventColorCategory) return [];
 
-    const base = currentNotes.filter((note) => {
-      const matchesDate = !selectedDateString || note.date === selectedDateString;
-      const matchesCat = (() => {
-        if (selectedCategory === 'CAT_HW') return note.type === 'homework';
-        if (selectedCategory === 'CAT_NOTES') return note.type === 'note';
-        if (selectedCategory === 'CAT_DEBTS') {
-          return note.type === 'homework' && !note.isCompleted && (note.date < todayIso || note.transferPending);
-        }
-        return true;
-      })();
-      return matchesDate && matchesCat;
-    });
-
+    const base = currentNotes.filter(
+      (note) => note.date === activeDateIso && matchesNoteCategory(note)
+    );
     return searchNotes(base, searchQuery);
-  }, [currentNotes, selectedCategory, selectedDateString, todayIso, searchQuery, isEventColorCategory]);
+  }, [currentNotes, activeDateIso, matchesNoteCategory, searchQuery, isEventColorCategory]);
 
   const displayedEvents = React.useMemo(() => {
     if (isNoteCategory) return [];
 
     const base = eventsList.filter((event) => {
       const matchesCat = !selectedCategory || event.color === selectedCategory;
-      const matchesDate = !selectedDateString || event.date === selectedDateString;
-      return matchesCat && matchesDate;
+      return matchesCat && event.date === activeDateIso;
     });
 
     return searchEvents(base, searchQuery);
-  }, [eventsList, selectedCategory, selectedDateString, isNoteCategory, searchQuery]);
+  }, [eventsList, selectedCategory, activeDateIso, isNoteCategory, searchQuery]);
+
+  const upcomingItems = React.useMemo(() => {
+    const matchedNotes = isEventColorCategory
+      ? []
+      : searchNotes(
+          currentNotes.filter(
+            (note) =>
+              note.date >= todayIso &&
+              note.date <= upcomingEndIso &&
+              note.date !== activeDateIso &&
+              matchesNoteCategory(note)
+          ),
+          searchQuery
+        );
+
+    const matchedEvents = isNoteCategory
+      ? []
+      : searchEvents(
+          eventsList.filter((event) => {
+            const matchesCat = !selectedCategory || event.color === selectedCategory;
+            return (
+              matchesCat &&
+              event.date >= todayIso &&
+              event.date <= upcomingEndIso &&
+              event.date !== activeDateIso
+            );
+          }),
+          searchQuery
+        );
+
+    type UpcomingEntry =
+      | { kind: 'note'; date: string; note: ScheduleNote }
+      | { kind: 'event'; date: string; event: CalendarEvent };
+
+    const combined: UpcomingEntry[] = [
+      ...matchedNotes.map((note) => ({ kind: 'note' as const, date: note.date, note })),
+      ...matchedEvents.map((event) => ({ kind: 'event' as const, date: event.date, event })),
+    ];
+
+    return combined.sort((a, b) => a.date.localeCompare(b.date));
+  }, [
+    currentNotes,
+    eventsList,
+    todayIso,
+    upcomingEndIso,
+    activeDateIso,
+    selectedCategory,
+    isNoteCategory,
+    isEventColorCategory,
+    matchesNoteCategory,
+    searchQuery,
+  ]);
+
+  const renderNoteCard = (note: ScheduleNote) => {
+    const isDebt = note.type === 'homework' && !note.isCompleted && (note.date < todayIso || note.transferPending);
+    const title = note.type === 'homework'
+      ? `ДЗ: ${note.subject || ''}${note.lessonNum ? ` (${note.lessonNum} урок)` : ''}`
+      : note.slotType === 'before_lessons'
+      ? 'До уроков'
+      : note.slotType === 'after_lessons'
+      ? 'После уроков'
+      : note.slotType === 'lesson'
+      ? `Заметка (${note.lessonNum} урок)`
+      : 'Заметка';
+
+    return (
+      <div
+        key={`note_${note.id}`}
+        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 shadow-sm ${
+          isDebt
+            ? 'bg-red-500/10 border-red-500/30'
+            : 'bg-[var(--md-surface)] border border-[var(--md-border)]'
+        }`}
+      >
+        <button
+          onClick={() => toggleCompleted(note.id)}
+          className="text-[var(--nika-subject)] shrink-0"
+        >
+          {note.isCompleted ? (
+            <CheckCircle2 className="w-5 h-5 fill-[var(--nika-subject)] text-white" />
+          ) : (
+            <Circle className={`w-5 h-5 ${isDebt ? 'text-red-500' : 'text-[var(--md-text-muted)]'}`} />
+          )}
+        </button>
+
+        <div
+          className="flex-1 cursor-pointer min-w-0"
+          onClick={() => {
+            setEditingNote(note);
+            setIsDialogOpen(true);
+          }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h4
+              className={`font-semibold text-xs sm:text-sm truncate ${
+                isDebt ? 'text-red-500 font-bold' : 'text-[var(--md-text-primary)]'
+              }`}
+            >
+              {title}
+            </h4>
+            {note.transferPending ? (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--nika-subject)]/15 text-[var(--nika-subject)] shrink-0">
+                Перенос на след. неделю
+              </span>
+            ) : isDebt ? (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-600 shrink-0">
+                Не сдано
+              </span>
+            ) : null}
+          </div>
+
+          <p className="text-[11px] text-[var(--md-text-muted)] mt-0.5">
+            {note.transferPending
+              ? 'Ожидает расписание'
+              : formatDateWithDay(note.date)}
+          </p>
+
+          <p
+            className={`text-xs mt-1 whitespace-pre-wrap leading-relaxed ${
+              note.isCompleted
+                ? 'line-through text-[var(--md-text-muted)]'
+                : 'text-[var(--md-text-primary)]'
+            }`}
+          >
+            {note.text}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => {
+              setEditingNote(note);
+              setIsDialogOpen(true);
+            }}
+            className="p-1.5 text-[var(--md-text-muted)] hover:text-[var(--nika-subject)] transition-colors"
+            title="Редактировать"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => deleteNote(note.id)}
+            className="p-1.5 text-[var(--md-text-muted)] hover:text-red-500 transition-colors"
+            title="Удалить"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEventCard = (ev: CalendarEvent, idx: number) => {
+    const label =
+      ev.sourceLabel &&
+      !ev.sourceLabel.toLowerCase().includes('файл') &&
+      !ev.sourceLabel.toLowerCase().includes('сайт')
+        ? ev.sourceLabel
+        : null;
+    const formattedDate = formatDateWithDay(ev.date);
+    const dateSubtitle = label ? `${formattedDate} • ${label}` : formattedDate;
+    const dotColor = (ev.color && EVENT_DOT_COLORS[ev.color]) || '#059669';
+
+    return (
+      <div
+        key={`event_${ev.date}_${idx}`}
+        onClick={() => {
+          setSelectedDateString(ev.date);
+          const p = ev.date.split('-');
+          if (p.length === 3) {
+            setCurrentDate(new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, 1));
+          }
+        }}
+        className="p-3 bg-[var(--md-surface)] border border-[var(--md-border-light)] rounded-xl flex items-center justify-between gap-3 shadow-xs cursor-pointer hover:bg-[var(--md-surface-variant)]/40 transition-colors"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span
+            className="w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: dotColor }}
+          />
+          <div className="min-w-0">
+            <h4 className="font-bold text-xs sm:text-sm text-[var(--md-text-primary)]">
+              {ev.title}
+            </h4>
+            <p className="text-[11px] text-[var(--md-text-muted)] mt-0.5">
+              {dateSubtitle}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div
       {...swipeHandlers}
-      className="w-full max-w-4xl mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
+      className="w-full max-w-4xl lg:max-w-7xl mx-auto flex-1 flex flex-col lg:flex-row lg:items-stretch bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
     >
+      {/* Left Column (Full width on mobile; Fixed calendar panel on desktop) */}
+      <div className="lg:w-[440px] xl:w-[480px] lg:shrink-0 lg:border-r border-[var(--md-border-light)] flex flex-col">
       {/* 1. Unified Surface Header: Month Navigation & Days of Week */}
       <div className="bg-[var(--md-surface)] border-b border-[var(--md-border-light)] transition-colors">
         {/* Month Navigation Row */}
@@ -389,63 +599,68 @@ export const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-3 space-y-3 flex-1 flex flex-col">
-
-      {/* Archive weeks available in this month */}
-      {archiveWeeksInMonth.length > 0 && (
-        <div data-no-swipe="true" className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-          <span className="text-[11px] font-bold text-[var(--md-text-muted)] shrink-0 mr-1">
-            Архив:
-          </span>
-          {archiveWeeksInMonth.map(({ isoMonday, idx }) => {
-            const weekParam = -(idx + 1);
-            return (
-              <button
-                key={isoMonday}
-                onClick={() => {
-                  setSelectedArchiveWeek(weekParam);
-                  loadArchiveSchedule(weekParam);
-                  navigate('/archive');
-                }}
-                className="px-2.5 py-1 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border)] text-[11px] font-bold text-[var(--nika-subject)] hover:bg-[var(--md-surface-variant)] shrink-0 transition-all shadow-xs"
-              >
-                {formatArchiveWeekChip(isoMonday)}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Button to open schedule or archive info banner for selected day */}
-      {selectedDateString && (
-        <div className="animate-in fade-in duration-150">
-          {selectedScheduleNav ? (
-            <button
-              onClick={() => handleOpenSchedule(selectedScheduleNav)}
-              className="w-full py-2.5 px-4 rounded-xl border border-[var(--nika-subject)] text-[var(--nika-subject)] font-bold text-xs sm:text-sm bg-[var(--nika-active-bg)]/20 hover:bg-[var(--nika-active-bg)]/40 flex items-center justify-center gap-2 transition-all shadow-sm"
-            >
-              <CalendarIcon className="w-4 h-4" />
-              <span>
-                {selectedScheduleNav.weekOffset === 0
-                  ? (new Date(selectedDateString).getDay() === 0
-                      ? 'Открыть расписание на понедельник'
-                      : 'Открыть расписание на этот день')
-                  : (() => {
-                      const archiveIdx = -(selectedScheduleNav.weekOffset + 1);
-                      const iso = archiveWeeksList[archiveIdx];
-                      const label = iso ? formatArchiveWeekChip(iso) : '';
-                      return label ? `Открыть архив: ${label}` : 'Открыть архив расписания';
-                    })()}
+      {/* Archive weeks & Schedule nav under calendar */}
+      {(archiveWeeksInMonth.length > 0 || selectedDateString) && (
+        <div className="px-3 pt-3 space-y-2.5">
+          {archiveWeeksInMonth.length > 0 && (
+            <div data-no-swipe="true" className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              <span className="text-[11px] font-bold text-[var(--md-text-muted)] shrink-0 mr-1">
+                Архив:
               </span>
-            </button>
-          ) : (
-            <div className="w-full p-3 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] flex items-center gap-2.5 text-xs text-[var(--md-text-muted)]">
-              <Info className="w-4 h-4 text-[var(--md-text-muted)] shrink-0" />
-              <span>Расписание на эту неделю недоступно в архиве</span>
+              {archiveWeeksInMonth.map(({ isoMonday, idx }) => {
+                const weekParam = -(idx + 1);
+                return (
+                  <button
+                    key={isoMonday}
+                    onClick={() => {
+                      setSelectedArchiveWeek(weekParam);
+                      loadArchiveSchedule(weekParam);
+                      navigate('/archive');
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border)] text-[11px] font-bold text-[var(--nika-subject)] hover:bg-[var(--md-surface-variant)] shrink-0 transition-all shadow-xs"
+                  >
+                    {formatArchiveWeekChip(isoMonday)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {selectedDateString && (
+            <div className="animate-in fade-in duration-150">
+              {selectedScheduleNav ? (
+                <button
+                  onClick={() => handleOpenSchedule(selectedScheduleNav)}
+                  className="w-full py-2.5 px-4 rounded-xl border border-[var(--nika-subject)] text-[var(--nika-subject)] font-bold text-xs sm:text-sm bg-[var(--nika-active-bg)]/20 hover:bg-[var(--nika-active-bg)]/40 flex items-center justify-center gap-2 transition-all shadow-sm"
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                  <span>
+                    {selectedScheduleNav.weekOffset === 0
+                      ? (new Date(selectedDateString).getDay() === 0
+                          ? 'Открыть расписание на понедельник'
+                          : 'Открыть расписание на этот день')
+                      : (() => {
+                          const archiveIdx = -(selectedScheduleNav.weekOffset + 1);
+                          const iso = archiveWeeksList[archiveIdx];
+                          const label = iso ? formatArchiveWeekChip(iso) : '';
+                          return label ? `Открыть архив: ${label}` : 'Открыть архив расписания';
+                        })()}
+                  </span>
+                </button>
+              ) : (
+                <div className="w-full p-3 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] flex items-center gap-2.5 text-xs text-[var(--md-text-muted)]">
+                  <Info className="w-4 h-4 text-[var(--md-text-muted)] shrink-0" />
+                  <span>Расписание на эту неделю недоступно в архиве</span>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
+      </div>
+
+      {/* Right Column on PC / Stacked Below on Mobile: Search, Categories & 2 Event Lists */}
+      <div className="p-3 space-y-4 flex-1 min-w-0 flex flex-col">
 
       {/* Search Input for Events in Calendar */}
       <div className="relative">
@@ -494,175 +709,64 @@ export const CalendarPage: React.FC = () => {
         })}
       </div>
 
-      {/* Events and Notes List */}
+      {/* List 1: Events and Notes for Selected / Today Date */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="font-bold text-xs text-[var(--md-text-muted)]">
-            {selectedDateString
-              ? `События и заметки на ${selectedDateString}`
-              : 'События лицея и заметки'}
+            {selectedDateString && selectedDateString !== todayIso
+              ? `События и заметки на ${formatDateWithDay(selectedDateString)}`
+              : `События и заметки на сегодня (${formatDateWithDay(todayIso)})`}
           </h3>
-          {selectedDateString && (
+          {selectedDateString && selectedDateString !== todayIso && (
             <button
               onClick={() => setSelectedDateString(null)}
-              className="text-xs text-[var(--nika-subject)] font-semibold hover:underline"
+              className="text-xs text-[var(--nika-subject)] font-semibold hover:underline shrink-0"
             >
-              Показать все
+              Сегодня
             </button>
           )}
         </div>
 
         {displayedNotes.length === 0 && displayedEvents.length === 0 ? (
-          <div className="py-12 px-4 text-center">
+          <div className="py-8 px-4 text-center">
             <p className="text-sm font-medium text-[var(--md-border)]">
               {searchQuery.trim()
                 ? `По запросу «${searchQuery}» ничего не найдено`
-                : 'В выбранной категории записей не найдено'}
+                : 'На выбранную дату записей нет'}
             </p>
           </div>
         ) : (
-          <>
-            {/* Notes Section first */}
-            {displayedNotes.map((note) => {
-              const isDebt = note.type === 'homework' && !note.isCompleted && (note.date < todayIso || note.transferPending);
-              const title = note.type === 'homework'
-                ? `ДЗ: ${note.subject || ''}${note.lessonNum ? ` (${note.lessonNum} урок)` : ''}`
-                : note.slotType === 'before_lessons'
-                ? 'До уроков'
-                : note.slotType === 'after_lessons'
-                ? 'После уроков'
-                : note.slotType === 'lesson'
-                ? `Заметка (${note.lessonNum} урок)`
-                : 'Заметка';
+          <div className="space-y-2">
+            {displayedNotes.map((note) => renderNoteCard(note))}
+            {displayedEvents.map((ev, idx) => renderEventCard(ev, idx))}
+          </div>
+        )}
+      </div>
 
-              return (
-                <div
-                  key={`note_${note.id}`}
-                  className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 shadow-sm ${
-                    isDebt
-                      ? 'bg-red-500/10 border-red-500/30'
-                      : 'bg-[var(--md-surface)] border border-[var(--md-border)]'
-                  }`}
-                >
-                  <button
-                    onClick={() => toggleCompleted(note.id)}
-                    className="text-[var(--nika-subject)] shrink-0"
-                  >
-                    {note.isCompleted ? (
-                      <CheckCircle2 className="w-5 h-5 fill-[var(--nika-subject)] text-white" />
-                    ) : (
-                      <Circle className={`w-5 h-5 ${isDebt ? 'text-red-500' : 'text-[var(--md-text-muted)]'}`} />
-                    )}
-                  </button>
+      {/* List 2: Upcoming Events for next 21 days (3 weeks) */}
+      <div className="space-y-2 pt-2 border-t border-[var(--md-border-light)]">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-xs text-[var(--md-text-muted)]">
+            Ближайшие события (21 день)
+          </h3>
+        </div>
 
-                  <div
-                    className="flex-1 cursor-pointer min-w-0"
-                    onClick={() => {
-                      setEditingNote(note);
-                      setIsDialogOpen(true);
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <h4
-                        className={`font-semibold text-xs sm:text-sm truncate ${
-                          isDebt ? 'text-red-500 font-bold' : 'text-[var(--md-text-primary)]'
-                        }`}
-                      >
-                        {title}
-                      </h4>
-                      {note.transferPending ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--nika-subject)]/15 text-[var(--nika-subject)] shrink-0">
-                          Перенос на след. неделю
-                        </span>
-                      ) : isDebt ? (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-600 shrink-0">
-                          Не сдано
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <p className="text-[11px] text-[var(--md-text-muted)] mt-0.5">
-                      {note.transferPending
-                        ? 'Ожидает расписание'
-                        : formatDateWithDay(note.date)}
-                    </p>
-
-                    <p
-                      className={`text-xs mt-1 whitespace-pre-wrap leading-relaxed ${
-                        note.isCompleted
-                          ? 'line-through text-[var(--md-text-muted)]'
-                          : 'text-[var(--md-text-primary)]'
-                      }`}
-                    >
-                      {note.text}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => {
-                        setEditingNote(note);
-                        setIsDialogOpen(true);
-                      }}
-                      className="p-1.5 text-[var(--md-text-muted)] hover:text-[var(--nika-subject)] transition-colors"
-                      title="Редактировать"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => deleteNote(note.id)}
-                      className="p-1.5 text-[var(--md-text-muted)] hover:text-red-500 transition-colors"
-                      title="Удалить"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Lyceum Events */}
-            {displayedEvents.map((ev, idx) => {
-              const label =
-                ev.sourceLabel &&
-                !ev.sourceLabel.toLowerCase().includes('файл') &&
-                !ev.sourceLabel.toLowerCase().includes('сайт')
-                  ? ev.sourceLabel
-                  : null;
-              const dateSubtitle = label ? `${ev.date} • ${label}` : ev.date;
-
-              return (
-                <div
-                  key={`event_${idx}`}
-                  className="p-3 bg-[var(--md-surface)] border border-[var(--md-border-light)] rounded-xl flex items-center justify-between gap-3 shadow-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{
-                        backgroundColor:
-                          ev.color === 'blue'
-                            ? '#2563EB'
-                            : ev.color === 'orange'
-                            ? '#D97706'
-                            : ev.color === 'red'
-                            ? '#DC2626'
-                            : '#059669',
-                      }}
-                    />
-                    <div>
-                      <h4 className="font-bold text-xs sm:text-sm text-[var(--md-text-primary)]">
-                        {ev.title}
-                      </h4>
-                      <p className="text-[11px] text-[var(--md-text-muted)] mt-0.5">
-                        {dateSubtitle}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </>
+        {upcomingItems.length === 0 ? (
+          <div className="py-8 px-4 text-center">
+            <p className="text-sm font-medium text-[var(--md-border)]">
+              {searchQuery.trim()
+                ? `По запросу «${searchQuery}» ничего не найдено`
+                : 'В ближайшие 21 день записей нет'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {upcomingItems.map((entry, idx) =>
+              entry.kind === 'note'
+                ? renderNoteCard(entry.note)
+                : renderEventCard(entry.event, idx)
+            )}
+          </div>
         )}
       </div>
       </div>
