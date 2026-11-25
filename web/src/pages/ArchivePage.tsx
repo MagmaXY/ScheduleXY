@@ -11,6 +11,12 @@ import { processLessons } from '../domain/schedulePairMerger';
 import { getChangesForLesson, isScheduleForTeacher } from '../types/api';
 import { Calendar } from 'lucide-react';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
+import { useCanUseWeekView } from '../hooks/useCanUseWeekView';
+import {
+  formatFullDateGenitive,
+  formatWeekRangeGenitive,
+  parseLocalDate,
+} from '../utils/dateUtils';
 
 function formatArchiveWeekChip(isoMonday: string): string {
   try {
@@ -47,8 +53,12 @@ export const ArchivePage: React.FC = () => {
   const isLoading = useScheduleStore((s) => s.isLoading);
 
   const targetName = usePreferencesStore((s) => s.targetName);
+  const setTargetType = usePreferencesStore((s) => s.setTargetType);
+  const setTargetName = usePreferencesStore((s) => s.setTargetName);
   const showPairsSchedule = usePreferencesStore((s) => s.showPairsSchedule);
+  const canUseWeekView = useCanUseWeekView();
   const [isWeekView, setIsWeekView] = useState(false);
+  const effectiveWeekView = canUseWeekView && isWeekView;
 
   const isTeacher = isScheduleForTeacher(archiveSchedule);
   const daySchedule = archiveSchedule?.days?.find(
@@ -89,81 +99,87 @@ export const ArchivePage: React.FC = () => {
   const activeWeekOption = weekOptions.find((opt) => opt.weekParam === selectedArchiveWeek);
   const activeWeekIso = activeWeekOption?.isoMonday || null;
 
+  const getArchiveMonday = (): Date => {
+    const mondayIso = archiveSchedule?.weekStart || activeWeekIso;
+    if (mondayIso) {
+      return parseLocalDate(mondayIso);
+    }
+    const cal = new Date();
+    const dayOfWeek = (cal.getDay() + 6) % 7;
+    cal.setDate(cal.getDate() - dayOfWeek + selectedArchiveWeek * 7);
+    return cal;
+  };
+
+  const weekRangeLabel = formatWeekRangeGenitive(getArchiveMonday());
+
   // Date label format: "21 ноября" (DaySelector itself will prepend the day name, preventing duplication)
   const getArchiveDateLabel = (): string => {
-    const cal = new Date();
-    const mondayIso = archiveSchedule?.weekStart || activeWeekIso;
-
-    if (mondayIso) {
-      const parts = mondayIso.split('-');
-      if (parts.length === 3) {
-        cal.setFullYear(parseInt(parts[0], 10));
-        cal.setMonth(parseInt(parts[1], 10) - 1);
-        cal.setDate(parseInt(parts[2], 10));
-        cal.setDate(cal.getDate() + archiveDayIndex);
-        return cal.toLocaleDateString('ru-RU', {
-          day: 'numeric',
-          month: 'long',
-        });
-      }
-    }
-
-    const dayOfWeek = (cal.getDay() + 6) % 7;
-    cal.setDate(cal.getDate() - dayOfWeek + selectedArchiveWeek * 7 + archiveDayIndex);
-    return cal.toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-    });
+    const cal = getArchiveMonday();
+    cal.setDate(cal.getDate() + archiveDayIndex);
+    return formatFullDateGenitive(cal);
   };
 
   const getArchiveIso = (): string => {
-    const cal = new Date();
-    const mondayIso = archiveSchedule?.weekStart || activeWeekIso;
-
-    if (mondayIso) {
-      const parts = mondayIso.split('-');
-      if (parts.length === 3) {
-        cal.setFullYear(parseInt(parts[0], 10));
-        cal.setMonth(parseInt(parts[1], 10) - 1);
-        cal.setDate(parseInt(parts[2], 10));
-        cal.setDate(cal.getDate() + archiveDayIndex);
-        const y = cal.getFullYear();
-        const m = String(cal.getMonth() + 1).padStart(2, '0');
-        const d = String(cal.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      }
-    }
-
-    const dayOfWeek = (cal.getDay() + 6) % 7;
-    cal.setDate(cal.getDate() - dayOfWeek + selectedArchiveWeek * 7 + archiveDayIndex);
+    const cal = getArchiveMonday();
+    cal.setDate(cal.getDate() + archiveDayIndex);
     const y = cal.getFullYear();
     const m = String(cal.getMonth() + 1).padStart(2, '0');
     const d = String(cal.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   };
 
-  // Arrow key and Digit hotkey navigation: PC (1 = Вся, 2-7 = Пн-Сб), Mobile (1-6 = Пн-Сб)
+  const handleTeacherClassClick = (name: string) => {
+    if (isTeacher) {
+      setTargetType('class');
+      setTargetName(name);
+    } else {
+      setTargetType('teacher');
+      setTargetName(name);
+    }
+    loadArchiveSchedule(selectedArchiveWeek);
+  };
+
+  const handleRoomClick = (room: string, lessonNum: number, dayIdx: number = archiveDayIndex) => {
+    navigate(`/freerooms?day=${dayIdx}&lesson=${lessonNum}&room=${encodeURIComponent(room)}`);
+  };
+
+  const goNextInCycle = () => {
+    if (effectiveWeekView) {
+      setIsWeekView(false);
+      setArchiveDayIndex(0);
+    } else if (archiveDayIndex < 5) {
+      setArchiveDayIndex(archiveDayIndex + 1);
+    } else if (canUseWeekView) {
+      setIsWeekView(true);
+    } else {
+      setArchiveDayIndex(0);
+    }
+  };
+
+  const goPrevInCycle = () => {
+    if (effectiveWeekView) {
+      setIsWeekView(false);
+      setArchiveDayIndex(5);
+    } else if (archiveDayIndex > 0) {
+      setArchiveDayIndex(archiveDayIndex - 1);
+    } else if (canUseWeekView) {
+      setIsWeekView(true);
+    } else {
+      setArchiveDayIndex(5);
+    }
+  };
+
+  // Arrow key and Digit hotkey navigation: PC/Landscape (1 = Вся, 2-7 = Пн-Сб), Mobile portrait (1-6 = Пн-Сб)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      const isDesktop = window.innerWidth >= 1024;
       if (e.key === 'ArrowRight') {
-        if (isDesktop && isWeekView) {
-          setIsWeekView(false);
-          setArchiveDayIndex(0);
-        } else {
-          setArchiveDayIndex(archiveDayIndex < 5 ? archiveDayIndex + 1 : 0);
-        }
+        goNextInCycle();
       } else if (e.key === 'ArrowLeft') {
-        if (isDesktop && isWeekView) {
-          setIsWeekView(false);
-          setArchiveDayIndex(5);
-        } else {
-          setArchiveDayIndex(archiveDayIndex > 0 ? archiveDayIndex - 1 : 5);
-        }
-      } else if (isDesktop) {
+        goPrevInCycle();
+      } else if (canUseWeekView) {
         if (e.key === '1') {
           setIsWeekView(true);
         } else if (e.key >= '2' && e.key <= '7') {
@@ -176,23 +192,19 @@ export const ArchivePage: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [archiveDayIndex, setArchiveDayIndex, isWeekView]);
+  }, [archiveDayIndex, setArchiveDayIndex, effectiveWeekView, canUseWeekView]);
 
-  // Touch and LMB mouse drag swipe handling
+  // Touch and LMB mouse drag swipe handling (includes "Вся" in cycle when available)
   const swipeHandlers = useSwipeGesture({
-    onSwipeLeft: () => {
-      setArchiveDayIndex(archiveDayIndex < 5 ? archiveDayIndex + 1 : 0);
-    },
-    onSwipeRight: () => {
-      setArchiveDayIndex(archiveDayIndex > 0 ? archiveDayIndex - 1 : 5);
-    },
+    onSwipeLeft: goNextInCycle,
+    onSwipeRight: goPrevInCycle,
   });
 
   return (
     <div
       {...swipeHandlers}
       className={`w-full mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative border-[var(--md-border-light)] ${
-        isWeekView ? 'max-w-4xl lg:max-w-none lg:border-x-0' : 'max-w-4xl lg:border-x'
+        effectiveWeekView ? 'max-w-none border-x-0' : 'max-w-4xl lg:border-x'
       }`}
     >
       {/* Top Unified Header Bar for Archive: Classes/Teachers, Target Box, Archive Week Switcher */}
@@ -243,9 +255,9 @@ export const ArchivePage: React.FC = () => {
             selectedDayIndex={archiveDayIndex}
             currentDayIndex={-1}
             dateLabel={getArchiveDateLabel()}
-            isWeekView={isWeekView}
-            weekRangeLabel={activeWeekOption?.label}
-            onSelectWeekView={() => setIsWeekView(true)}
+            isWeekView={effectiveWeekView}
+            weekRangeLabel={weekRangeLabel}
+            onSelectWeekView={canUseWeekView ? () => setIsWeekView(true) : undefined}
             onDaySelected={(day) => {
               setIsWeekView(false);
               setArchiveDayIndex(day);
@@ -263,84 +275,84 @@ export const ArchivePage: React.FC = () => {
                   Загрузка архивного расписания...
                 </p>
               </div>
+            ) : effectiveWeekView ? (
+              <WeekScheduleTable
+                schedule={archiveSchedule}
+                targetName={targetName}
+                showPairsSchedule={showPairsSchedule}
+                weekOffset={selectedArchiveWeek}
+                onTeacherClassClick={handleTeacherClassClick}
+                onRoomClick={handleRoomClick}
+                onDayHeaderClick={(dayIdx) => {
+                  setIsWeekView(false);
+                  setArchiveDayIndex(dayIdx);
+                }}
+                onDateClick={(dateIso) => navigate('/calendar', { state: { date: dateIso } })}
+              />
             ) : (
-              <>
-                {isWeekView && (
-                  <div className="hidden lg:flex lg:flex-col lg:flex-1">
-                    <WeekScheduleTable
-                      schedule={archiveSchedule}
-                      targetName={targetName}
-                      showPairsSchedule={showPairsSchedule}
-                      weekOffset={selectedArchiveWeek}
-                      onDayHeaderClick={(dayIdx) => {
-                        setIsWeekView(false);
-                        setArchiveDayIndex(dayIdx);
-                      }}
-                      onDateClick={(dateIso) => navigate('/calendar', { state: { date: dateIso } })}
-                    />
+              <div className="flex-1 flex flex-col">
+                {processedItems.length === 0 ? (
+                  <div className="py-16 text-center">
+                    <p className="text-sm font-bold text-[var(--md-text-primary)]">
+                      Нет занятий в выбранный день
+                    </p>
                   </div>
-                )}
-
-                <div className={isWeekView ? 'lg:hidden flex-1 flex flex-col' : 'flex-1 flex flex-col'}>
-                  {processedItems.length === 0 ? (
-                    <div className="py-16 text-center">
-                      <p className="text-sm font-bold text-[var(--md-text-primary)]">
-                        Нет занятий в выбранный день
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-[var(--md-border-light)]">
-                      {processedItems.map((item, idx) => {
-                        if (item.type === 'pair') {
-                          const ch1 = getChangesForLesson(
-                            archiveSchedule,
-                            archiveDayIndex,
-                            item.firstLesson.num
-                          );
-                          const ch2 = getChangesForLesson(
-                            archiveSchedule,
-                            archiveDayIndex,
-                            item.secondLesson.num
-                          );
-
-                          return (
-                            <PairCard
-                              key={idx}
-                              pairNum={item.pairNum}
-                              pairRoman={item.pairRoman}
-                              pairTimes={item.pairTimes}
-                              firstLesson={item.firstLesson}
-                              secondLesson={item.secondLesson}
-                              dayIndex={archiveDayIndex}
-                              changes1={ch1}
-                              changes2={ch2}
-                              isTeacherMode={isTeacher}
-                              isActiveNow={false}
-                            />
-                          );
-                        }
-
-                        const ch = getChangesForLesson(
+                ) : (
+                  <div className="divide-y divide-[var(--md-border-light)]">
+                    {processedItems.map((item, idx) => {
+                      if (item.type === 'pair') {
+                        const ch1 = getChangesForLesson(
                           archiveSchedule,
                           archiveDayIndex,
-                          item.lesson.num
+                          item.firstLesson.num
+                        );
+                        const ch2 = getChangesForLesson(
+                          archiveSchedule,
+                          archiveDayIndex,
+                          item.secondLesson.num
                         );
 
                         return (
-                          <LessonCard
+                          <PairCard
                             key={idx}
-                            lesson={item.lesson}
+                            pairNum={item.pairNum}
+                            pairRoman={item.pairRoman}
+                            pairTimes={item.pairTimes}
+                            firstLesson={item.firstLesson}
+                            secondLesson={item.secondLesson}
                             dayIndex={archiveDayIndex}
-                            changes={ch}
+                            changes1={ch1}
+                            changes2={ch2}
                             isTeacherMode={isTeacher}
                             isActiveNow={false}
+                            onTeacherClassClick={handleTeacherClassClick}
+                            onRoomClick={handleRoomClick}
                           />
                         );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </>
+                      }
+
+                      const ch = getChangesForLesson(
+                        archiveSchedule,
+                        archiveDayIndex,
+                        item.lesson.num
+                      );
+
+                      return (
+                        <LessonCard
+                          key={idx}
+                          lesson={item.lesson}
+                          dayIndex={archiveDayIndex}
+                          changes={ch}
+                          isTeacherMode={isTeacher}
+                          isActiveNow={false}
+                          onTeacherClassClick={handleTeacherClassClick}
+                          onRoomClick={handleRoomClick}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </>

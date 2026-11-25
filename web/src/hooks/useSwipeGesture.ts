@@ -9,16 +9,18 @@ interface UseSwipeGestureOptions {
 function isInsideHorizontalScroll(el: HTMLElement | null): boolean {
   let current: HTMLElement | null = el;
   while (current && current !== document.body && current !== document.documentElement) {
-    if (
-      current.hasAttribute('data-no-swipe') ||
-      current.classList.contains('overflow-x-auto') ||
-      current.classList.contains('overflow-x-scroll')
-    ) {
+    if (current.hasAttribute('data-no-swipe')) {
       return true;
     }
     const style = window.getComputedStyle(current);
     const ox = style.overflowX;
-    if ((ox === 'auto' || ox === 'scroll') && current.scrollWidth > current.clientWidth) {
+    const isScrollableClass =
+      current.classList.contains('overflow-x-auto') ||
+      current.classList.contains('overflow-x-scroll');
+    if (
+      (isScrollableClass || ox === 'auto' || ox === 'scroll') &&
+      current.scrollWidth > current.clientWidth + 1
+    ) {
       return true;
     }
     current = current.parentElement;

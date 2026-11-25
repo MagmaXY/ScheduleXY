@@ -329,8 +329,8 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Separate counters for teachers: Free on the Left, Busy on the Right */}
-            <div className="flex items-center justify-between px-1 text-sm font-bold">
+            {/* Mobile counters row: Free on the Left, Busy on the Right */}
+            <div className="flex lg:hidden items-center justify-between px-1 text-sm font-bold">
               <span className="text-[var(--nika-subject)]">
                 Свободно учителей: {freeTeachers.length}
               </span>
@@ -339,50 +339,62 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
               </span>
             </div>
 
-            {/* Free Teachers List */}
-            <div className="space-y-1.5">
-              {freeTeachers.length === 0 ? (
-                <div className="text-xs text-[var(--md-text-muted)] p-2">
-                  {search ? 'Учитель не найден' : 'В этот слот нет свободных учителей'}
+            {/* Responsive split on PC: Free Teachers on the Left, Busy Teachers on the Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              {/* Left Column: Free Teachers List */}
+              <div className="space-y-2">
+                <div className="hidden lg:block px-1 text-sm font-bold text-[var(--nika-subject)]">
+                  Свободно учителей: {freeTeachers.length}
                 </div>
-              ) : (
-                freeTeachers.map((teacher) => (
-                  <div
-                    key={teacher}
-                    className="flex items-center px-3 py-2 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] shadow-xs"
-                  >
-                    <Check className="w-4 h-4 text-[var(--nika-subject)] mr-2.5 shrink-0" />
-                    <span className="text-xs font-semibold text-[var(--md-text-primary)]">
-                      {teacher}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
+                <div className="space-y-1.5">
+                  {freeTeachers.length === 0 ? (
+                    <div className="text-xs text-[var(--md-text-muted)] p-2">
+                      {search ? 'Учитель не найден' : 'В этот слот нет свободных учителей'}
+                    </div>
+                  ) : (
+                    freeTeachers.map((teacher) => (
+                      <div
+                        key={teacher}
+                        className="flex items-center px-3 py-2 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] shadow-xs"
+                      >
+                        <Check className="w-4 h-4 text-[var(--nika-subject)] mr-2.5 shrink-0" />
+                        <span className="text-xs font-semibold text-[var(--md-text-primary)]">
+                          {teacher}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
 
-            {/* Busy Teachers Header */}
-            {busyTeachers.length > 0 && (
-              <>
-                <div className="text-xs font-bold text-red-500 dark:text-red-400 pt-1 px-1">
-                  Занятые учителя:
+              {/* Right Column: Busy Teachers List */}
+              <div className={`space-y-2 ${busyTeachers.length === 0 ? 'hidden lg:block' : ''}`}>
+                <div className="text-xs lg:text-sm font-bold text-red-500 dark:text-red-400 pt-1 lg:pt-0 px-1">
+                  Занято учителей: {busyTeachers.length}
                 </div>
                 <div className="space-y-1.5 pb-4">
-                  {busyTeachers.map(([teacher, info]) => (
-                    <div
-                      key={teacher}
-                      className="flex flex-col px-3 py-2 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] shadow-xs"
-                    >
-                      <span className="text-xs font-bold text-red-500 dark:text-red-400">
-                        {teacher}
-                      </span>
-                      <span className="text-[11px] text-[var(--md-text-secondary)] mt-0.5">
-                        {info}
-                      </span>
+                  {busyTeachers.length === 0 ? (
+                    <div className="text-xs text-[var(--md-text-muted)] p-2">
+                      {search ? 'Учитель не найден' : 'В этот слот нет занятых учителей'}
                     </div>
-                  ))}
+                  ) : (
+                    busyTeachers.map(([teacher, info]) => (
+                      <div
+                        key={teacher}
+                        className="flex flex-col px-3 py-2 rounded-xl bg-[var(--md-surface)] border border-[var(--md-border-light)] shadow-xs"
+                      >
+                        <span className="text-xs font-bold text-red-500 dark:text-red-400">
+                          {teacher}
+                        </span>
+                        <span className="text-[11px] text-[var(--md-text-secondary)] mt-0.5">
+                          {info}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
-              </>
-            )}
+              </div>
+            </div>
           </div>
         )}
       </div>

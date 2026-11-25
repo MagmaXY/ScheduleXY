@@ -94,7 +94,7 @@ export const scheduleRepository = {
 
       for (const c of Array.from(classNames)) {
         const cached = await cacheManager.getSchedule('class', c, week);
-        if (cached) {
+        if (cached && !JSON.stringify(cached).includes('\uFFFD')) {
           classSchedules.set(c, cached);
         } else {
           classesToFetch.push(c);

@@ -7,7 +7,7 @@ import { PairCard } from '../components/schedule/PairCard';
 import { WeekScheduleTable } from '../components/schedule/WeekScheduleTable';
 import { NoteEditDialog } from '../components/notes/NoteEditDialog';
 import { useScheduleStore } from '../store/scheduleStore';
-import { toLocalDateIso, parseLocalDate } from '../utils/dateUtils';
+import { toLocalDateIso, parseLocalDate, formatWeekRangeGenitive, formatFullDateGenitive } from '../utils/dateUtils';
 import { usePreferencesStore } from '../store/preferencesStore';
 import { useNotesStore } from '../store/notesStore';
 import { RealtimeState } from '../hooks/useRealtimeSync';
@@ -15,6 +15,7 @@ import { processLessons } from '../domain/schedulePairMerger';
 import { getChangesForLesson, isScheduleForTeacher } from '../types/api';
 import { Copy, Edit, Check } from 'lucide-react';
 import { useSwipeGesture } from '../hooks/useSwipeGesture';
+import { useCanUseWeekView } from '../hooks/useCanUseWeekView';
 
 interface Props {
   realtimeState: RealtimeState;
@@ -43,7 +44,9 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
   const [noteInitialSubject, setNoteInitialSubject] = useState('');
   const [noteInitialLessonNum, setNoteInitialLessonNum] = useState<number | null>(null);
   const [noteInitialDateIso, setNoteInitialDateIso] = useState<string | null>(null);
+  const canUseWeekView = useCanUseWeekView();
   const [isWeekView, setIsWeekView] = useState(false);
+  const effectiveWeekView = canUseWeekView && isWeekView;
   const [copied, setCopied] = useState(false);
 
   const isTeacher = isScheduleForTeacher(currentSchedule);
@@ -67,12 +70,12 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
     if (currentSchedule?.weekStart) {
       const d = parseLocalDate(currentSchedule.weekStart);
       d.setDate(d.getDate() + selectedDayIndex);
-      return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+      return formatFullDateGenitive(d);
     }
     const now = new Date();
     const dayOfWeek = (now.getDay() + 6) % 7;
     now.setDate(now.getDate() - dayOfWeek + selectedDayIndex);
-    return now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    return formatFullDateGenitive(now);
   };
 
   const getIsoDate = (): string => {
@@ -90,24 +93,16 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
   const currentDateIso = getIsoDate();
   const dateLabel = getDateLabel();
 
-  const getWeekRangeLabel = (): string => {
-    let mon: Date;
+  const getWeekMonday = (): Date => {
     if (currentSchedule?.weekStart) {
-      mon = parseLocalDate(currentSchedule.weekStart);
-    } else {
-      mon = new Date();
-      const dow = (mon.getDay() + 6) % 7;
-      mon.setDate(mon.getDate() - dow);
+      return parseLocalDate(currentSchedule.weekStart);
     }
-    const sat = new Date(mon);
-    sat.setDate(mon.getDate() + 5);
-    const m1 = mon.toLocaleDateString('ru-RU', { month: 'long' });
-    const m2 = sat.toLocaleDateString('ru-RU', { month: 'long' });
-    return m1 === m2
-      ? `${mon.getDate()}–${sat.getDate()} ${m2}`
-      : `${mon.getDate()} ${m1}–${sat.getDate()} ${m2}`;
+    const mon = new Date();
+    const dow = (mon.getDay() + 6) % 7;
+    mon.setDate(mon.getDate() - dow);
+    return mon;
   };
-  const weekRangeLabel = getWeekRangeLabel();
+  const weekRangeLabel = formatWeekRangeGenitive(getWeekMonday());
 
   const todayIso = toLocalDateIso();
   const isThisWeek = (() => {
@@ -165,11 +160,14 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
 
   const handleCopyWeekSchedule = () => {
     if (!currentSchedule?.days) return;
-    const blocks: string[] = [`📅 Неделя (${weekRangeLabel}) — ${targetName}`];
+    const monday = getWeekMonday();
+    const blocks: string[] = [`📅 Вся неделя, ${weekRangeLabel} (${targetName})`];
     for (let dIdx = 0; dIdx < 6; dIdx++) {
       const ds = currentSchedule.days.find((d) => d.dayIndex === dIdx);
       if (!ds || ds.lessons.length === 0) continue;
-      blocks.push(`\n— ${ds.dayName} —`);
+      const dDate = new Date(monday);
+      dDate.setDate(monday.getDate() + dIdx);
+      blocks.push(`\n— ${ds.dayName}, ${formatFullDateGenitive(dDate)} —`);
       ds.lessons.forEach((l) => {
         const subj = l.subgroups.map((s) => s.subject).filter(Boolean).join(' / ') || '—';
         const room = l.subgroups.map((s) => s.room).filter(Boolean).join(', ') || '';
@@ -204,29 +202,44 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
     navigate('/calendar', { state: { date: currentDateIso } });
   };
 
-  // Arrow key and Digit hotkey navigation: PC (1 = Вся, 2-7 = Пн-Сб), Mobile (1-6 = Пн-Сб)
+  const goNextInCycle = () => {
+    if (effectiveWeekView) {
+      setIsWeekView(false);
+      setSelectedDayIndex(0);
+    } else if (selectedDayIndex < 5) {
+      setSelectedDayIndex(selectedDayIndex + 1);
+    } else if (canUseWeekView) {
+      setIsWeekView(true);
+    } else {
+      setSelectedDayIndex(0);
+    }
+  };
+
+  const goPrevInCycle = () => {
+    if (effectiveWeekView) {
+      setIsWeekView(false);
+      setSelectedDayIndex(5);
+    } else if (selectedDayIndex > 0) {
+      setSelectedDayIndex(selectedDayIndex - 1);
+    } else if (canUseWeekView) {
+      setIsWeekView(true);
+    } else {
+      setSelectedDayIndex(5);
+    }
+  };
+
+  // Arrow key and Digit hotkey navigation: PC/Landscape (1 = Вся, 2-7 = Пн-Сб), Mobile portrait (1-6 = Пн-Сб)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (dialogOpen) return;
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      const isDesktop = window.innerWidth >= 1024;
       if (e.key === 'ArrowRight') {
-        if (isDesktop && isWeekView) {
-          setIsWeekView(false);
-          setSelectedDayIndex(0);
-        } else {
-          setSelectedDayIndex(selectedDayIndex < 5 ? selectedDayIndex + 1 : 0);
-        }
+        goNextInCycle();
       } else if (e.key === 'ArrowLeft') {
-        if (isDesktop && isWeekView) {
-          setIsWeekView(false);
-          setSelectedDayIndex(5);
-        } else {
-          setSelectedDayIndex(selectedDayIndex > 0 ? selectedDayIndex - 1 : 5);
-        }
-      } else if (isDesktop) {
+        goPrevInCycle();
+      } else if (canUseWeekView) {
         if (e.key === '1') {
           setIsWeekView(true);
         } else if (e.key >= '2' && e.key <= '7') {
@@ -239,23 +252,19 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedDayIndex, setSelectedDayIndex, isWeekView, dialogOpen]);
+  }, [selectedDayIndex, setSelectedDayIndex, effectiveWeekView, canUseWeekView, dialogOpen]);
 
-  // Touch and LMB mouse drag swipe handling
+  // Touch and LMB mouse drag swipe handling (includes "Вся" in cycle when available)
   const swipeHandlers = useSwipeGesture({
-    onSwipeLeft: () => {
-      setSelectedDayIndex(selectedDayIndex < 5 ? selectedDayIndex + 1 : 0);
-    },
-    onSwipeRight: () => {
-      setSelectedDayIndex(selectedDayIndex > 0 ? selectedDayIndex - 1 : 5);
-    },
+    onSwipeLeft: goNextInCycle,
+    onSwipeRight: goPrevInCycle,
   });
 
   return (
     <div
       {...swipeHandlers}
       className={`w-full mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative border-[var(--md-border-light)] ${
-        isWeekView ? 'max-w-4xl lg:max-w-none lg:border-x-0' : 'max-w-4xl lg:border-x'
+        effectiveWeekView ? 'max-w-none border-x-0' : 'max-w-4xl lg:border-x'
       }`}
     >
       {/* 1. Target Selector Header */}
@@ -263,14 +272,14 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
         <TargetSelector onTargetChanged={() => loadSchedule()} />
       </div>
 
-      {/* 2. Unified Day Selector with Clickable Date & PC "Вся" button */}
+      {/* 2. Unified Day Selector with Clickable Date & "Вся" button on PC / landscape */}
       <DaySelector
         selectedDayIndex={selectedDayIndex}
         currentDayIndex={activeDayIndex}
         dateLabel={dateLabel}
-        isWeekView={isWeekView}
+        isWeekView={effectiveWeekView}
         weekRangeLabel={weekRangeLabel}
-        onSelectWeekView={() => setIsWeekView(true)}
+        onSelectWeekView={canUseWeekView ? () => setIsWeekView(true) : undefined}
         onDaySelected={(day) => {
           setIsWeekView(false);
           setSelectedDayIndex(day);
@@ -305,8 +314,9 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
         }
       />
 
-      {/* 3. Floating Copy & Note Action Icons lowered down well below the day selector (hidden in PC week view) */}
-      <div className={`absolute right-2 top-[138px] z-20 flex flex-col items-center gap-1 ${isWeekView ? 'lg:hidden' : ''}`}>
+      {/* 3. Floating Copy & Note Action Icons lowered down well below the day selector (hidden in week view) */}
+      {!effectiveWeekView && (
+      <div className="absolute right-2 top-[138px] z-20 flex flex-col items-center gap-1">
         {/* Copy button */}
         <button
           onClick={handleCopySchedule}
@@ -332,8 +342,9 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
           </button>
         )}
       </div>
+      )}
 
-      {/* 4. Lessons / Pairs List or PC Weekly Table */}
+      {/* 4. Lessons / Pairs List or Weekly Table */}
       <div className="flex-1 bg-[var(--md-surface)] flex flex-col">
         {isLoading ? (
           <div className="py-20 text-center">
@@ -342,41 +353,36 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
               Загрузка расписания...
             </p>
           </div>
-        ) : (
-          <>
-            {isWeekView && (
-              <div className="hidden lg:flex lg:flex-col lg:flex-1">
-                <WeekScheduleTable
-                  schedule={currentSchedule}
-                  targetName={targetName}
-                  showPairsSchedule={showPairsSchedule}
-                  realtimeState={realtimeState}
-                  activeDayIndex={activeDayIndex}
-                  isThisWeek={isThisWeek}
-                  notes={notes}
-                  onToggleNoteCompleted={toggleCompleted}
-                  onTeacherClassClick={handleTeacherClassClick}
-                  onRoomClick={handleRoomClick}
-                  onCellClick={
-                    !isTeacher
-                      ? (_dayIdx, lessonNum, subject, dateIso) => {
-                          setNoteInitialDateIso(dateIso);
-                          setNoteInitialLessonNum(lessonNum);
-                          setNoteInitialSubject(subject);
-                          setDialogOpen(true);
-                        }
-                      : undefined
+        ) : effectiveWeekView ? (
+          <WeekScheduleTable
+            schedule={currentSchedule}
+            targetName={targetName}
+            showPairsSchedule={showPairsSchedule}
+            realtimeState={realtimeState}
+            activeDayIndex={activeDayIndex}
+            isThisWeek={isThisWeek}
+            notes={notes}
+            onToggleNoteCompleted={toggleCompleted}
+            onTeacherClassClick={handleTeacherClassClick}
+            onRoomClick={handleRoomClick}
+            onCellClick={
+              !isTeacher
+                ? (_dayIdx, lessonNum, subject, dateIso) => {
+                    setNoteInitialDateIso(dateIso);
+                    setNoteInitialLessonNum(lessonNum);
+                    setNoteInitialSubject(subject);
+                    setDialogOpen(true);
                   }
-                  onDayHeaderClick={(dayIdx) => {
-                    setIsWeekView(false);
-                    setSelectedDayIndex(dayIdx);
-                  }}
-                  onDateClick={(dateIso) => navigate('/calendar', { state: { date: dateIso } })}
-                />
-              </div>
-            )}
-
-            <div className={isWeekView ? 'lg:hidden flex-1 flex flex-col' : 'flex-1 flex flex-col'}>
+                : undefined
+            }
+            onDayHeaderClick={(dayIdx) => {
+              setIsWeekView(false);
+              setSelectedDayIndex(dayIdx);
+            }}
+            onDateClick={(dateIso) => navigate('/calendar', { state: { date: dateIso } })}
+          />
+        ) : (
+          <div className="flex-1 flex flex-col">
               {processedItems.length === 0 ? (
                 <div className="py-20 text-center px-4">
                   <p className="text-sm font-bold text-[var(--md-text-primary)]">
@@ -572,7 +578,6 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
           </div>
               )}
             </div>
-          </>
         )}
       </div>
 

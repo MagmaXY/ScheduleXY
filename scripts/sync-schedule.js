@@ -283,7 +283,9 @@ async function main() {
       const safeName = encodeURIComponent(c.name);
       const targetFile = path.join(DATA_DIR, 'archive', `week_${weekParam}`, `${safeName}.json`);
       const rawTargetFile = path.join(DATA_DIR, 'archive', `week_${weekParam}`, `${c.name}.json`);
-      if (!fs.existsSync(targetFile)) {
+      const isCorrupted = (p) => fs.existsSync(p) && fs.readFileSync(p, 'utf8').includes('\uFFFD');
+      const needsFetch = !fs.existsSync(targetFile) || isCorrupted(targetFile) || isCorrupted(rawTargetFile);
+      if (needsFetch) {
         try {
           const archSchedule = await fetchJson(`${BASE_URL}/schedule/class/${safeName}?week=${weekParam}`);
           if (archSchedule) {

@@ -32,3 +32,39 @@ export function addDaysToIso(isoStr: string, days: number): string {
   d.setDate(d.getDate() + days);
   return toLocalDateIso(d);
 }
+
+const GENITIVE_MONTHS = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+];
+
+/**
+ * Formats a Monday-Saturday week range with genitive Russian month declension,
+ * e.g. "23–28 ноября" or "30 ноября–5 декабря".
+ */
+export function formatWeekRangeGenitive(monday: Date): string {
+  const sat = new Date(monday);
+  sat.setDate(monday.getDate() + 5);
+  const m1 = GENITIVE_MONTHS[monday.getMonth()] || '';
+  const m2 = GENITIVE_MONTHS[sat.getMonth()] || '';
+  return m1 === m2
+    ? `${monday.getDate()}–${sat.getDate()} ${m2}`
+    : `${monday.getDate()} ${m1}–${sat.getDate()} ${m2}`;
+}
+
+/**
+ * Formats a single date with genitive month declension, e.g. "23 ноября".
+ */
+export function formatFullDateGenitive(date: Date): string {
+  return `${date.getDate()} ${GENITIVE_MONTHS[date.getMonth()] || ''}`;
+}

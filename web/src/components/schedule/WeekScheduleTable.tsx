@@ -10,7 +10,7 @@ import { RealtimeState } from '../../hooks/useRealtimeSync';
 import { BELLS } from '../../domain/bellSchedule';
 import { getPairRomanNum, getPairTimeRange, getSplitLessonTimes } from '../../domain/pairSchedule';
 import { processLessons } from '../../domain/schedulePairMerger';
-import { parseLocalDate, toLocalDateIso } from '../../utils/dateUtils';
+import { parseLocalDate, toLocalDateIso, formatFullDateGenitive } from '../../utils/dateUtils';
 import { isLessonTotallyCancelled } from '../../utils/notesLessonHelper';
 import { LessonBody, LessonNotesList } from './LessonBody';
 
@@ -95,10 +95,7 @@ export const WeekScheduleTable: React.FC<Props> = ({
         dateObj.setDate(dateObj.getDate() - dow + weekOffset * 7 + dayIndex);
       }
       const dateIso = toLocalDateIso(dateObj);
-      const dateLabel = dateObj.toLocaleDateString('ru-RU', {
-        day: 'numeric',
-        month: 'short',
-      });
+      const dateLabel = formatFullDateGenitive(dateObj);
       const daySched = schedule?.days?.find((d) => d.dayIndex === dayIndex);
       const lessons = daySched?.lessons || [];
       const processed = processLessons(lessons, isTeacher, targetName, showPairsSchedule);
@@ -212,9 +209,7 @@ export const WeekScheduleTable: React.FC<Props> = ({
       <table className="w-full min-w-[920px] table-fixed border-collapse">
         <thead>
           <tr className="bg-[var(--md-surface)] border-b border-[var(--md-border-light)]">
-            <th className="w-[74px] py-2.5 px-2 text-center font-bold text-[11px] uppercase tracking-wider text-[var(--md-text-muted)] align-middle">
-              {usePairRows ? 'Пара' : 'Урок'}
-            </th>
+            <th className="w-[74px]" />
             {dayColumns.map((col) => {
               const isToday = isThisWeek && col.dayIndex === activeDayIndex;
               const isSaturday = col.dayIndex === 5;
@@ -225,38 +220,42 @@ export const WeekScheduleTable: React.FC<Props> = ({
                     isToday ? 'bg-[var(--nika-active-bg)]/35' : ''
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => onDayHeaderClick?.(col.dayIndex)}
-                      className={`font-bold text-[13px] truncate transition-opacity ${
-                        onDayHeaderClick ? 'hover:opacity-75 cursor-pointer' : 'cursor-default'
-                      } ${
-                        isToday
-                          ? 'text-[var(--nika-subject)]'
-                          : isSaturday
-                          ? 'text-[var(--md-secondary)]'
-                          : 'text-[var(--md-text-primary)]'
-                      }`}
-                      title={onDayHeaderClick ? `Открыть ${col.dayName}` : undefined}
-                    >
-                      {col.dayName}
-                    </button>
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0 leading-snug">
+                    <span className="inline-flex items-baseline flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => onDayHeaderClick?.(col.dayIndex)}
+                        className={`font-bold text-[12.5px] transition-opacity ${
+                          onDayHeaderClick ? 'hover:opacity-75 cursor-pointer' : 'cursor-default'
+                        } ${
+                          isToday
+                            ? 'text-[var(--nika-subject)]'
+                            : isSaturday
+                            ? 'text-[var(--md-secondary)]'
+                            : 'text-[var(--md-text-primary)]'
+                        }`}
+                        title={onDayHeaderClick ? `Открыть ${col.dayName}` : undefined}
+                      >
+                        {col.dayName}
+                      </button>
+                      <span className="text-[12px] text-[var(--md-text-muted)] mr-1">,</span>
+                      <button
+                        type="button"
+                        onClick={() => onDateClick?.(col.dateIso)}
+                        className={`text-[12px] font-medium text-[var(--md-text-muted)] ${
+                          onDateClick ? 'hover:text-[var(--nika-subject)] hover:underline cursor-pointer' : 'cursor-default'
+                        }`}
+                        title={onDateClick ? `Открыть ${col.dateLabel} в календаре` : undefined}
+                      >
+                        {col.dateLabel}
+                      </button>
+                    </span>
                     {isToday && (
                       <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] shrink-0">
                         Сегодня
                       </span>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => onDateClick?.(col.dateIso)}
-                    className={`block text-[11px] font-medium text-[var(--md-text-muted)] mt-0.5 ${
-                      onDateClick ? 'hover:text-[var(--nika-subject)] hover:underline cursor-pointer' : 'cursor-default'
-                    }`}
-                  >
-                    {col.dateLabel}
-                  </button>
                 </th>
               );
             })}

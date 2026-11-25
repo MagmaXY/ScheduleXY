@@ -473,6 +473,41 @@ export const CalendarPage: React.FC = () => {
     );
   };
 
+  const selectedDateListBlock = (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-bold text-xs text-[var(--md-text-muted)]">
+          {selectedDateString && selectedDateString !== todayIso
+            ? `События и заметки на ${formatDateWithDay(selectedDateString)}`
+            : `События и заметки на сегодня (${formatDateWithDay(todayIso)})`}
+        </h3>
+        {selectedDateString && selectedDateString !== todayIso && (
+          <button
+            onClick={() => setSelectedDateString(null)}
+            className="text-xs text-[var(--nika-subject)] font-semibold hover:underline shrink-0"
+          >
+            Сегодня
+          </button>
+        )}
+      </div>
+
+      {displayedNotes.length === 0 && displayedEvents.length === 0 ? (
+        <div className="py-8 px-4 text-center">
+          <p className="text-sm font-medium text-[var(--md-border)]">
+            {searchQuery.trim()
+              ? `По запросу «${searchQuery}» ничего не найдено`
+              : 'На выбранную дату записей нет'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {displayedNotes.map((note) => renderNoteCard(note))}
+          {displayedEvents.map((ev, idx) => renderEventCard(ev, idx))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div
       {...swipeHandlers}
@@ -657,6 +692,11 @@ export const CalendarPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* On PC: Selected / Today Date Events & Notes placed under Calendar & Open Schedule button */}
+      <div className="hidden lg:block px-3 pt-3 pb-4">
+        {selectedDateListBlock}
+      </div>
       </div>
 
       {/* Right Column on PC / Stacked Below on Mobile: Search, Categories & 2 Event Lists */}
@@ -709,42 +749,13 @@ export const CalendarPage: React.FC = () => {
         })}
       </div>
 
-      {/* List 1: Events and Notes for Selected / Today Date */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-bold text-xs text-[var(--md-text-muted)]">
-            {selectedDateString && selectedDateString !== todayIso
-              ? `События и заметки на ${formatDateWithDay(selectedDateString)}`
-              : `События и заметки на сегодня (${formatDateWithDay(todayIso)})`}
-          </h3>
-          {selectedDateString && selectedDateString !== todayIso && (
-            <button
-              onClick={() => setSelectedDateString(null)}
-              className="text-xs text-[var(--nika-subject)] font-semibold hover:underline shrink-0"
-            >
-              Сегодня
-            </button>
-          )}
-        </div>
-
-        {displayedNotes.length === 0 && displayedEvents.length === 0 ? (
-          <div className="py-8 px-4 text-center">
-            <p className="text-sm font-medium text-[var(--md-border)]">
-              {searchQuery.trim()
-                ? `По запросу «${searchQuery}» ничего не найдено`
-                : 'На выбранную дату записей нет'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {displayedNotes.map((note) => renderNoteCard(note))}
-            {displayedEvents.map((ev, idx) => renderEventCard(ev, idx))}
-          </div>
-        )}
+      {/* On Mobile: List 1 (Selected / Today Date) stays above Upcoming List */}
+      <div className="lg:hidden">
+        {selectedDateListBlock}
       </div>
 
       {/* List 2: Upcoming Events for next 21 days (3 weeks) */}
-      <div className="space-y-2 pt-2 border-t border-[var(--md-border-light)]">
+      <div className="space-y-2 pt-2 border-t border-[var(--md-border-light)] lg:border-t-0 lg:pt-0">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-xs text-[var(--md-text-muted)]">
             Ближайшие события (21 день)
