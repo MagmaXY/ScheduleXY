@@ -1,4 +1,6 @@
 import {
+  Lesson,
+  ScheduleChangeItem,
   ScheduleResponse,
   normalizeSubject,
   getChangesForLesson,
@@ -122,6 +124,33 @@ export function findChangeForSubgroup(
 }
 
 /**
+ * Checks whether an entire lesson is cancelled (no active subgroups remain).
+ */
+export function isLessonTotallyCancelled(
+  lesson: Lesson,
+  changes: ScheduleChangeItem[]
+): boolean {
+  if (changes.length === 0) return false;
+  if (lesson.subgroups.length <= 1) {
+    return changes.some((c) => isCancelledLesson(c));
+  }
+
+  const hasGeneralCancel = changes.some(
+    (it) =>
+      isCancelledLesson(it) &&
+      !it.group?.trim() &&
+      !it.subgroup?.trim() &&
+      !it.label?.trim()
+  );
+  if (hasGeneralCancel) return true;
+
+  return lesson.subgroups.every((sg) => {
+    const c = findChangeForSubgroup(sg, changes, lesson.subgroups);
+    return c ? isCancelledLesson(c) : false;
+  });
+}
+
+/**
  * Resolves the effective subject for a given lesson number and date in ISO format (YYYY-MM-DD),
  * taking into account:
  *  - Timetable base lessons
@@ -153,28 +182,7 @@ export function getEffectiveLessonSubject(
 
     const changes = getChangesForLesson(schedule, dow, lessonNum);
 
-    // Check total cancellation
-    const isTotalCancelled = (() => {
-      if (changes.length === 0) return false;
-      if (lesson.subgroups.length === 0) return changes.some((c) => isCancelledLesson(c));
-      if (lesson.subgroups.length <= 1) return changes.some((c) => isCancelledLesson(c));
-
-      const hasGeneralCancel = changes.some(
-        (it) =>
-          isCancelledLesson(it) &&
-          !it.group?.trim() &&
-          !it.subgroup?.trim() &&
-          !it.label?.trim()
-      );
-      if (hasGeneralCancel) return true;
-
-      return lesson.subgroups.every((sg) => {
-        const c = findChangeForSubgroup(sg, changes, lesson.subgroups);
-        return c ? isCancelledLesson(c) : false;
-      });
-    })();
-
-    if (isTotalCancelled) return null;
+    if (isLessonTotallyCancelled(lesson, changes)) return null;
 
     // Subgroup match
     const isTech =

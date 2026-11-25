@@ -118,12 +118,12 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex bg-[var(--md-background)] text-[var(--md-text-primary)] transition-colors">
+    <div className="min-h-screen min-h-dvh flex bg-[var(--md-background)] text-[var(--md-text-primary)] transition-colors">
       {/* Side Navigation Rail for Desktop */}
       <NavigationRail currentTab={currentTab} onSelectTab={handleSelectTab} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-24 lg:pb-0">
+      <div className="flex-1 flex flex-col min-w-0 pb-[calc(5rem+var(--safe-area-bottom))] lg:pb-0">
         <Header
           realtimeState={realtimeState}
           isLoading={isLoading}
@@ -135,7 +135,7 @@ export const App: React.FC = () => {
           onOpenInfo={() => setInfoOpen(true)}
         />
 
-        <main className="flex-1">
+        <main className="flex-1 flex flex-col">
           <Routes>
             <Route path="/" element={<SchedulePage realtimeState={realtimeState} />} />
             <Route path="/schedule" element={<SchedulePage realtimeState={realtimeState} />} />

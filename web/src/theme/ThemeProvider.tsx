@@ -15,6 +15,13 @@ import {
   hexFromArgb,
 } from '@material/material-color-utilities';
 
+function argbWithAlpha(argb: number, alpha: number): string {
+  const r = (argb >> 16) & 0xff;
+  const g = (argb >> 8) & 0xff;
+  const b = argb & 0xff;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export const ThemeContext = React.createContext<{ tokens: ThemeTokens }>({
   tokens: lightClassic,
 });
@@ -50,11 +57,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
           subject: hexFromArgb(scheme.primary),
           teacher: hexFromArgb(scheme.secondary),
           group: hexFromArgb(scheme.tertiary),
+          lsnTime: isDarkMode ? '#4ADE80' : '#16A34A',
           gold: hexFromArgb(scheme.primary),
           textPrimary: hexFromArgb(scheme.onSurface),
           textSecondary: hexFromArgb(scheme.onSurfaceVariant),
           textMuted: isDarkMode ? '#94A3B8' : '#64748B',
+          change: isDarkMode ? '#FF2A55' : '#BE123C',
+          changeBg: isDarkMode ? 'rgba(90, 8, 29, 0.85)' : 'rgba(255, 228, 230, 0.70)',
+          changeBorder: isDarkMode ? '#F43F5E' : '#FB7185',
           cancel: isDarkMode ? '#94A3B8' : '#64748B',
+          cancelBg: argbWithAlpha(scheme.surfaceVariant, 0.5),
+          cancelBorder: argbWithAlpha(scheme.outline, 0.35),
+          activeNowBg: argbWithAlpha(scheme.primaryContainer, 0.35),
           onPrimary: hexFromArgb(scheme.onPrimary),
           secondary: hexFromArgb(scheme.secondary),
           secondaryContainer: hexFromArgb(scheme.secondaryContainer),

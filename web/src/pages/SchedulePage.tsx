@@ -192,7 +192,7 @@ export const SchedulePage: React.FC<Props> = ({ realtimeState }) => {
   return (
     <div
       {...swipeHandlers}
-      className="max-w-4xl mx-auto flex flex-col min-h-screen bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
+      className="w-full max-w-4xl mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
     >
       {/* 1. Target Selector Header */}
       <div className="px-3 pt-2.5 pb-1.5 bg-[var(--md-surface)]">

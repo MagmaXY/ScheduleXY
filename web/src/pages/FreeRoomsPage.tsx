@@ -151,7 +151,7 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
   return (
     <div
       {...swipeHandlers}
-      className="max-w-4xl mx-auto flex flex-col min-h-screen bg-[var(--md-background)] lg:border-x border-[var(--md-border-light)]"
+      className="w-full max-w-4xl mx-auto flex-1 flex flex-col bg-[var(--md-background)] lg:border-x border-[var(--md-border-light)]"
     >
       {/* Mode Switcher: Rooms / Teachers (equal 50% width and stretched across full bar) */}
       {isTeachersUnlocked && (
@@ -307,7 +307,7 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
             </div>
 
             {/* Busy Rooms Cards */}
-            <div className="space-y-1.5 pb-8">
+            <div className="space-y-1.5 pb-4">
               {busyRooms.length === 0 ? (
                 <div className="text-xs text-[var(--md-text-muted)] p-2">Все кабинеты свободны</div>
               ) : (
@@ -366,7 +366,7 @@ export const FreeRoomsPage: React.FC<Props> = ({ realtimeState }) => {
                 <div className="text-xs font-bold text-red-500 dark:text-red-400 pt-1 px-1">
                   Занятые учителя:
                 </div>
-                <div className="space-y-1.5 pb-8">
+                <div className="space-y-1.5 pb-4">
                   {busyTeachers.map(([teacher, info]) => (
                     <div
                       key={teacher}

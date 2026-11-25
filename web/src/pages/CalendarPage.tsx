@@ -268,7 +268,7 @@ export const CalendarPage: React.FC = () => {
   return (
     <div
       {...swipeHandlers}
-      className="max-w-4xl mx-auto flex flex-col min-h-screen bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
+      className="w-full max-w-4xl mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
     >
       {/* 1. Unified Surface Header: Month Navigation & Days of Week */}
       <div className="bg-[var(--md-surface)] border-b border-[var(--md-border-light)] transition-colors">
@@ -389,7 +389,7 @@ export const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-3 space-y-3 flex-1 flex flex-col pb-24">
+      <div className="p-3 space-y-3 flex-1 flex flex-col">
 
       {/* Archive weeks available in this month */}
       {archiveWeeksInMonth.length > 0 && (

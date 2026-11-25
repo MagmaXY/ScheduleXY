@@ -149,7 +149,7 @@ export const NotesPage: React.FC = () => {
   return (
     <div
       {...swipeHandlers}
-      className="max-w-4xl mx-auto flex flex-col min-h-screen bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
+      className="w-full max-w-4xl mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
     >
       {/* Top Unified Header Bar */}
       <div className="bg-[var(--md-surface)] border-b border-[var(--md-border-light)] transition-colors">
@@ -232,7 +232,7 @@ export const NotesPage: React.FC = () => {
       <div className="p-3 space-y-3 flex-1 flex flex-col">
         {/* Notes List */}
         {filteredNotes.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center py-24 px-4">
+          <div className="flex-1 flex items-center justify-center py-12 px-4">
             <p className="text-sm font-medium text-[var(--md-border)] text-center">
               {filterType === 'debts'
                 ? 'Долгов нет! Все задания выполнены.'
@@ -244,7 +244,7 @@ export const NotesPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-2.5 pb-24">
+          <div className="space-y-2.5 pb-16 lg:pb-20">
             {filteredNotes.map((note) => {
               const isPast = note.date < todayIso;
               const isDebt = note.type === 'homework' && !note.isCompleted && (isPast || note.transferPending);

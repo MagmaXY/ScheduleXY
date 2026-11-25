@@ -2,12 +2,15 @@ import React from 'react';
 import {
   Lesson,
   ScheduleChangeItem,
-  Subgroup,
   getLessonDisplaySubject,
   isCancelledLesson,
   normalizeSubject,
 } from '../../types/api';
 import { ScheduleNote } from '../../types/notes';
+import {
+  findChangeForSubgroup,
+  isLessonTotallyCancelled,
+} from '../../utils/notesLessonHelper';
 
 interface Props {
   lesson: Lesson;
@@ -20,71 +23,6 @@ interface Props {
   onTeacherClassClick?: (name: string) => void;
   onRoomClick?: (room: string, lessonNum: number) => void;
   onClick?: () => void;
-}
-
-function findChangeForSubgroup(
-  sg: Subgroup,
-  changes: ScheduleChangeItem[],
-  allSubgroups: Subgroup[]
-): ScheduleChangeItem | undefined {
-  if (changes.length === 0) return undefined;
-
-  const sgNum = sg.label?.replace(/\D/g, '');
-  const sgTeacherNorm = sg.teacher?.trim().toLowerCase() || '';
-  const sgRoomNorm = sg.room?.trim().replace(/^\(|\)$/g, '').toLowerCase() || '';
-
-  // 1. Exact match by group digits
-  if (sgNum) {
-    const groupMatch = changes.find((c) => {
-      const cNum = (c.group || c.subgroup || c.label)?.replace(/\D/g, '');
-      return cNum === sgNum;
-    });
-    if (groupMatch) return groupMatch;
-  }
-
-  // 2. Match by exact teacher
-  if (sgTeacherNorm) {
-    const teacherMatch = changes.find(
-      (c) => c.teacher?.trim().toLowerCase() === sgTeacherNorm
-    );
-    if (teacherMatch) return teacherMatch;
-  }
-
-  // 3. Match by exact room
-  if (sgRoomNorm) {
-    const roomMatch = changes.find((c) => {
-      const cRoom = c.room?.trim().replace(/^\(|\)$/g, '').toLowerCase() || '';
-      return cRoom === sgRoomNorm;
-    });
-    if (roomMatch) return roomMatch;
-  }
-
-  // 4. Fallback for single change with no group digits
-  const singleChange = changes.find((c) => {
-    const cNum = (c.group || c.subgroup || c.label)?.replace(/\D/g, '');
-    return !cNum;
-  });
-
-  if (singleChange && allSubgroups.length > 1) {
-    const changeTeacher = singleChange.teacher?.trim().toLowerCase() || '';
-    const changeRoom = singleChange.room?.trim().replace(/^\(|\)$/g, '').toLowerCase() || '';
-
-    const belongsToOther = allSubgroups.some((other) => {
-      if (other === sg) return false;
-      const otherTeacher = other.teacher?.trim().toLowerCase() || '';
-      const otherRoom = other.room?.trim().replace(/^\(|\)$/g, '').toLowerCase() || '';
-      return (
-        (changeTeacher && otherTeacher === changeTeacher) ||
-        (changeRoom && otherRoom === changeRoom)
-      );
-    });
-
-    if (belongsToOther) {
-      return undefined;
-    }
-  }
-
-  return singleChange;
 }
 
 function formatRoom(room?: string | null): string {
@@ -111,15 +49,7 @@ export const LessonCard: React.FC<Props> = ({
   onRoomClick,
   onClick,
 }) => {
-  const isTotalCancelled =
-    changes.length > 0 &&
-    (lesson.subgroups.length <= 1
-      ? changes.some((c) => isCancelledLesson(c))
-      : lesson.subgroups.every((sg) => {
-          const c = findChangeForSubgroup(sg, changes, lesson.subgroups);
-          return c ? isCancelledLesson(c) : false;
-        }));
-
+  const isTotalCancelled = isLessonTotallyCancelled(lesson, changes);
   const hasReplacement = !isTotalCancelled && changes.length > 0;
 
   // Background tint matching NIKA / Material 3
@@ -129,7 +59,7 @@ export const LessonCard: React.FC<Props> = ({
     ? 'bg-[var(--nika-active-bg)]'
     : hasReplacement
     ? 'bg-[var(--nika-change-bg)]'
-    : 'bg-[var(--md-surface)]';
+    : 'bg-transparent';
 
   const times = lesson.time.split(/–|-/);
   const displaySubject = getLessonDisplaySubject(lesson);

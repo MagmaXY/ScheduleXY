@@ -2,12 +2,15 @@ import React from 'react';
 import {
   Lesson,
   ScheduleChangeItem,
-  Subgroup,
   getLessonDisplaySubject,
   isCancelledLesson,
   normalizeSubject,
 } from '../../types/api';
 import { getSplitLessonTimes } from '../../domain/pairSchedule';
+import {
+  findChangeForSubgroup,
+  isLessonTotallyCancelled,
+} from '../../utils/notesLessonHelper';
 
 interface Props {
   pairNum: number;
@@ -54,67 +57,6 @@ function areLessonsIdentical(
   return true;
 }
 
-function findChangeForSubgroup(
-  sg: Subgroup,
-  changes: ScheduleChangeItem[],
-  allSubgroups: Subgroup[]
-): ScheduleChangeItem | undefined {
-  if (changes.length === 0) return undefined;
-
-  const sgNum = sg.label?.replace(/\D/g, '');
-  const sgTeacherNorm = sg.teacher?.trim().toLowerCase() || '';
-  const sgRoomNorm = sg.room?.trim().replace(/^\(|\)$/g, '').toLowerCase() || '';
-
-  if (sgNum) {
-    const groupMatch = changes.find((c) => {
-      const cNum = (c.group || c.subgroup || c.label)?.replace(/\D/g, '');
-      return cNum === sgNum;
-    });
-    if (groupMatch) return groupMatch;
-  }
-
-  if (sgTeacherNorm) {
-    const teacherMatch = changes.find(
-      (c) => c.teacher?.trim().toLowerCase() === sgTeacherNorm
-    );
-    if (teacherMatch) return teacherMatch;
-  }
-
-  if (sgRoomNorm) {
-    const roomMatch = changes.find((c) => {
-      const cRoom = c.room?.trim().replace(/^\(|\)$/g, '').toLowerCase() || '';
-      return cRoom === sgRoomNorm;
-    });
-    if (roomMatch) return roomMatch;
-  }
-
-  const singleChange = changes.find((c) => {
-    const cNum = (c.group || c.subgroup || c.label)?.replace(/\D/g, '');
-    return !cNum;
-  });
-
-  if (singleChange && allSubgroups.length > 1) {
-    const changeTeacher = singleChange.teacher?.trim().toLowerCase() || '';
-    const changeRoom = singleChange.room?.trim().replace(/^\(|\)$/g, '').toLowerCase() || '';
-
-    const belongsToOther = allSubgroups.some((other) => {
-      if (other === sg) return false;
-      const otherTeacher = other.teacher?.trim().toLowerCase() || '';
-      const otherRoom = other.room?.trim().replace(/^\(|\)$/g, '').toLowerCase() || '';
-      return (
-        (changeTeacher && otherTeacher === changeTeacher) ||
-        (changeRoom && otherRoom === changeRoom)
-      );
-    });
-
-    if (belongsToOther) {
-      return undefined;
-    }
-  }
-
-  return singleChange;
-}
-
 function formatRoom(room?: string | null): string {
   if (!room || !room.trim()) return '';
   const clean = room.trim().replace(/^\(|\)$/g, '');
@@ -156,12 +98,7 @@ export const PairCard: React.FC<Props> = ({
     // -------------------------------------------------------------
     // UNIFIED PAIR CARD (Same subject, teacher, room for both lessons)
     // -------------------------------------------------------------
-    const isTotalCancelled =
-      l1.subgroups.length > 0 &&
-      l1.subgroups.every((sg) => {
-        const c = findChangeForSubgroup(sg, allChanges, l1.subgroups);
-        return c ? isCancelledLesson(c) : false;
-      });
+    const isTotalCancelled = isLessonTotallyCancelled(l1, allChanges);
 
     const hasReplacement =
       !isTotalCancelled && (changes1.length > 0 || changes2.length > 0);
@@ -484,6 +421,26 @@ export const PairCard: React.FC<Props> = ({
   // -------------------------------------------------------------
   // SPLIT PAIR CARD (Different subjects in lesson 1 and lesson 2)
   // -------------------------------------------------------------
+  const isL1Cancelled = isLessonTotallyCancelled(l1, changes1);
+  const l1HasChange = !isL1Cancelled && changes1.length > 0;
+  const l1BgClass = isL1Cancelled
+    ? 'bg-[var(--nika-cancel-bg)]'
+    : isActiveL1
+    ? 'bg-[var(--nika-active-bg)]'
+    : l1HasChange
+    ? 'bg-[var(--nika-change-bg)]'
+    : '';
+
+  const isL2Cancelled = isLessonTotallyCancelled(l2, changes2);
+  const l2HasChange = !isL2Cancelled && changes2.length > 0;
+  const l2BgClass = isL2Cancelled
+    ? 'bg-[var(--nika-cancel-bg)]'
+    : isActiveL2
+    ? 'bg-[var(--nika-active-bg)]'
+    : l2HasChange
+    ? 'bg-[var(--nika-change-bg)]'
+    : '';
+
   return (
     <div
       className="w-full border-b border-[var(--md-border-light)] transition-colors select-text"
@@ -498,9 +455,7 @@ export const PairCard: React.FC<Props> = ({
         <div className="flex-1 divide-y divide-[var(--md-border-light)]/40">
           {/* Sub-Lesson 1 */}
           <div
-            className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-colors ${
-              isActiveL1 ? 'bg-[var(--nika-active-bg)]' : ''
-            }`}
+            className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-colors ${l1BgClass}`}
           >
             <div className="w-12 shrink-0 flex flex-col items-start leading-none pt-0.5">
               <span className="font-semibold text-[11.5px] text-[var(--nika-lsn-time)]">
@@ -517,9 +472,7 @@ export const PairCard: React.FC<Props> = ({
 
           {/* Sub-Lesson 2 */}
           <div
-            className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-colors ${
-              isActiveL2 ? 'bg-[var(--nika-active-bg)]' : ''
-            }`}
+            className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg transition-colors ${l2BgClass}`}
           >
             <div className="w-12 shrink-0 flex flex-col items-start leading-none pt-0.5">
               <span className="font-semibold text-[11.5px] text-[var(--nika-lsn-time)]">
@@ -575,12 +528,7 @@ function renderLessonContent(
   onTeacherClassClick?: (name: string) => void,
   onRoomClick?: (room: string, lessonNum: number) => void
 ) {
-  const isCancelled =
-    changes.length > 0 &&
-    lesson.subgroups.every((sg) => {
-      const c = findChangeForSubgroup(sg, changes, lesson.subgroups);
-      return c ? isCancelledLesson(c) : false;
-    });
+  const isCancelled = isLessonTotallyCancelled(lesson, changes);
 
   if (isCancelled) {
     const displaySubj = getLessonDisplaySubject(lesson) || 'Урок отменен';

@@ -169,7 +169,7 @@ export const ArchivePage: React.FC = () => {
   return (
     <div
       {...swipeHandlers}
-      className="max-w-4xl mx-auto flex flex-col min-h-screen bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
+      className="w-full max-w-4xl mx-auto flex-1 flex flex-col bg-[var(--md-background)] relative lg:border-x border-[var(--md-border-light)]"
     >
       {/* Top Unified Header Bar for Archive: Classes/Teachers, Target Box, Archive Week Switcher */}
       <div className="px-3 pt-3 pb-2 bg-[var(--md-surface)]">
@@ -204,7 +204,7 @@ export const ArchivePage: React.FC = () => {
       </div>
 
       {archiveWeeksList.length === 0 && !isLoading ? (
-        <div className="py-24 text-center bg-[var(--md-surface)] m-3 rounded-2xl border border-[var(--md-border)] p-6">
+        <div className="py-12 text-center bg-[var(--md-surface)] m-3 rounded-2xl border border-[var(--md-border)] p-6">
           <Calendar className="w-8 h-8 text-[var(--md-text-muted)] mx-auto mb-2" />
           <p className="font-bold text-sm text-[var(--md-text-primary)]">
             Архив расписаний прошлых недель
@@ -240,7 +240,7 @@ export const ArchivePage: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-[var(--md-border-light)] pb-8">
+              <div className="divide-y divide-[var(--md-border-light)]">
                 {processedItems.map((item, idx) => {
                   if (item.type === 'pair') {
                     const ch1 = getChangesForLesson(
