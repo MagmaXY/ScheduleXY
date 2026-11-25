@@ -12,6 +12,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import ru.nstu.lyceum.schedule.data.repository.PreferencesRepository
 import java.io.File
+import java.net.URLDecoder
+import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
@@ -125,7 +127,42 @@ class AppUpdateManager(
             }
         }
 
-        try {
+        val releaseResult = fetchReleaseFromApi().let { apiRes ->
+            if (apiRes.isSuccess) apiRes
+            else {
+                val webRes = fetchReleaseFromWeb()
+                if (webRes.isSuccess) webRes else apiRes
+            }
+        }
+
+        val releaseInfo = releaseResult.getOrElse { err ->
+            return@withContext UpdateCheckResult.Error(err.message ?: "Ошибка проверки обновлений")
+        }
+
+        prefs.lastUpdateCheckTime = now
+
+        val isDifferent = if (releaseInfo.hasExactSha256 && currentSha != null) {
+            !currentSha.equals(releaseInfo.sha256, ignoreCase = true)
+        } else {
+            val normalizedTag = releaseInfo.tagName.removePrefix("v").removePrefix("V").trim()
+            val currentVersion = getCurrentVersionName().removePrefix("v").removePrefix("V").trim()
+            normalizedTag.isNotBlank() && normalizedTag != currentVersion
+        }
+
+        if (isDifferent) {
+            prefs.cachedAvailableReleaseJson = gson.toJson(releaseInfo)
+            val isDismissed = !forceManual && prefs.dismissedUpdateHash == releaseInfo.sha256
+            UpdateCheckResult.UpdateAvailable(releaseInfo, isDismissed = isDismissed)
+        } else {
+            prefs.cachedAvailableReleaseJson = null
+            prefs.dismissedUpdateHash = null
+            cleanupOldUpdates()
+            UpdateCheckResult.UpToDate
+        }
+    }
+
+    private fun fetchReleaseFromApi(): Result<ReleaseInfo> {
+        return try {
             val request = Request.Builder()
                 .url(GITHUB_LATEST_RELEASE_URL)
                 .header("Accept", "application/vnd.github+json")
@@ -134,10 +171,10 @@ class AppUpdateManager(
 
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    return@withContext UpdateCheckResult.Error("GitHub API: ${response.code}")
+                    return Result.failure(IllegalStateException("GitHub API: ${response.code}"))
                 }
                 val bodyStr = response.body?.string()
-                    ?: return@withContext UpdateCheckResult.Error("Пустой ответ от GitHub")
+                    ?: return Result.failure(IllegalStateException("Пустой ответ от GitHub"))
 
                 val root = JsonParser.parseString(bodyStr).asJsonObject
                 val releaseId = root.get("id")?.asLong ?: 0L
@@ -151,10 +188,10 @@ class AppUpdateManager(
                     val name = el.asJsonObject.get("name")?.asString ?: ""
                     name.endsWith(".apk", ignoreCase = true)
                 }?.asJsonObject
-                    ?: return@withContext UpdateCheckResult.Error("APK-файл не найден в последнем релизе")
+                    ?: return Result.failure(IllegalStateException("APK-файл не найден в последнем релизе"))
 
                 val apkUrl = apkAsset.get("browser_download_url")?.asString
-                    ?: return@withContext UpdateCheckResult.Error("Не найдена ссылка на APK")
+                    ?: return Result.failure(IllegalStateException("Не найдена ссылка на APK"))
                 val apkName = apkAsset.get("name")?.asString ?: "ScheduleXY-update.apk"
                 val apkSize = apkAsset.get("size")?.asLong ?: 0L
                 val updatedAt = apkAsset.get("updated_at")?.asString ?: ""
@@ -167,42 +204,120 @@ class AppUpdateManager(
                     "id:$releaseId|size:$apkSize|updated:$updatedAt"
                 }
 
-                val releaseInfo = ReleaseInfo(
+                Result.success(
+                    ReleaseInfo(
+                        tagName = tagName,
+                        releaseName = releaseName,
+                        changelog = changelog,
+                        apkUrl = apkUrl,
+                        apkName = apkName,
+                        apkSize = apkSize,
+                        sha256 = releaseHash,
+                        hasExactSha256 = hasExactSha256,
+                        publishedAt = publishedAt
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun fetchReleaseFromWeb(): Result<ReleaseInfo> {
+        return try {
+            val latestReq = Request.Builder()
+                .url(GITHUB_WEB_LATEST_RELEASE_URL)
+                .header("User-Agent", "Mozilla/5.0 (Android) ScheduleXY")
+                .build()
+
+            val (tagName, releaseHtml) = httpClient.newCall(latestReq).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    return Result.failure(IllegalStateException("GitHub Web: ${resp.code}"))
+                }
+                val finalUrl = resp.request.url.toString()
+                val rawTag = finalUrl.substringAfter("/releases/tag/", "")
+                    .substringBefore("?")
+                    .substringBefore("#")
+                if (rawTag.isBlank()) {
+                    return Result.failure(IllegalStateException("Релизы не найдены"))
+                }
+                val decodedTag = URLDecoder.decode(rawTag, "UTF-8")
+                decodedTag to (resp.body?.string() ?: "")
+            }
+
+            val encodedTag = URLEncoder.encode(tagName, "UTF-8").replace("+", "%20")
+            val assetsUrl = "$GITHUB_WEB_EXPANDED_ASSETS_BASE/$encodedTag"
+            val assetsReq = Request.Builder()
+                .url(assetsUrl)
+                .header("User-Agent", "Mozilla/5.0 (Android) ScheduleXY")
+                .build()
+
+            val assetsHtml = httpClient.newCall(assetsReq).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    return Result.failure(IllegalStateException("GitHub Assets: ${resp.code}"))
+                }
+                resp.body?.string() ?: ""
+            }
+
+            val apkHrefRegex = Regex("""href="(/MagmaXY/ScheduleXY/releases/download/[^"]+\.apk)"""", RegexOption.IGNORE_CASE)
+            val apkMatch = apkHrefRegex.find(assetsHtml)
+                ?: return Result.failure(IllegalStateException("APK-файл не найден в последнем релизе"))
+
+            val apkPath = apkMatch.groupValues[1]
+            val apkUrl = "https://github.com$apkPath"
+            val apkName = URLDecoder.decode(apkPath.substringAfterLast("/"), "UTF-8")
+
+            // Look for sha256 digest in the <li> block around this APK asset (or anywhere in expanded_assets)
+            val liBlockStart = assetsHtml.lastIndexOf("<li", apkMatch.range.first).takeIf { it >= 0 } ?: 0
+            val liBlockEnd = assetsHtml.indexOf("</li>", apkMatch.range.last).takeIf { it >= 0 } ?: assetsHtml.length
+            val assetBlock = assetsHtml.substring(liBlockStart, liBlockEnd)
+
+            val shaRegex = Regex("""sha256:([0-9a-fA-F]{64})""")
+            val shaMatch = shaRegex.find(assetBlock) ?: shaRegex.find(assetsHtml)
+            val hasExactSha256 = shaMatch != null
+            val releaseHash = shaMatch?.groupValues?.get(1)?.lowercase() ?: "tag:$tagName"
+
+            val changelog = extractChangelogFromHtml(releaseHtml)
+
+            Result.success(
+                ReleaseInfo(
                     tagName = tagName,
-                    releaseName = releaseName,
+                    releaseName = tagName,
                     changelog = changelog,
                     apkUrl = apkUrl,
                     apkName = apkName,
-                    apkSize = apkSize,
+                    apkSize = 0L,
                     sha256 = releaseHash,
                     hasExactSha256 = hasExactSha256,
-                    publishedAt = publishedAt
+                    publishedAt = ""
                 )
-
-                prefs.lastUpdateCheckTime = now
-
-                val isDifferent = if (hasExactSha256 && currentSha != null) {
-                    !currentSha.equals(releaseHash, ignoreCase = true)
-                } else {
-                    val normalizedTag = tagName.removePrefix("v").removePrefix("V").trim()
-                    val currentVersion = getCurrentVersionName().removePrefix("v").removePrefix("V").trim()
-                    normalizedTag.isNotBlank() && normalizedTag != currentVersion
-                }
-
-                if (isDifferent) {
-                    prefs.cachedAvailableReleaseJson = gson.toJson(releaseInfo)
-                    val isDismissed = !forceManual && prefs.dismissedUpdateHash == releaseInfo.sha256
-                    UpdateCheckResult.UpdateAvailable(releaseInfo, isDismissed = isDismissed)
-                } else {
-                    prefs.cachedAvailableReleaseJson = null
-                    prefs.dismissedUpdateHash = null
-                    cleanupOldUpdates()
-                    UpdateCheckResult.UpToDate
-                }
-            }
+            )
         } catch (e: Exception) {
-            UpdateCheckResult.Error(e.message ?: "Ошибка проверки обновлений")
+            Result.failure(e)
         }
+    }
+
+    private fun extractChangelogFromHtml(html: String): String {
+        if (html.isBlank()) return ""
+        val mdMatch = Regex(
+            """<div[^>]*class="[^"]*markdown-body[^"]*"[^>]*>(.*?)</div>""",
+            setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
+        ).find(html) ?: return ""
+
+        val raw = mdMatch.groupValues[1]
+            .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+            .replace(Regex("</(p|div|li|h[1-6])>", RegexOption.IGNORE_CASE), "\n")
+            .replace(Regex("<li[^>]*>", RegexOption.IGNORE_CASE), "• ")
+            .replace(Regex("<[^>]+>"), "")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&nbsp;", " ")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
+        return raw
     }
 
     suspend fun downloadAndInstallApk(
@@ -301,5 +416,9 @@ class AppUpdateManager(
         const val CHECK_INTERVAL_MS = 24L * 60L * 60L * 1000L // 24 hours
         private const val GITHUB_LATEST_RELEASE_URL =
             "https://api.github.com/repos/MagmaXY/ScheduleXY/releases/latest"
+        private const val GITHUB_WEB_LATEST_RELEASE_URL =
+            "https://github.com/MagmaXY/ScheduleXY/releases/latest"
+        private const val GITHUB_WEB_EXPANDED_ASSETS_BASE =
+            "https://github.com/MagmaXY/ScheduleXY/releases/expanded_assets"
     }
 }
