@@ -1,11 +1,11 @@
 import { ScheduleNote } from '../types/notes';
 import { useNotesStore } from '../store/notesStore';
+import { getProxiedUrl } from '../api/client';
 
 const YANDEX_TOKEN_KEY = 'lyceum_yandex_token';
 const YANDEX_USER_KEY = 'lyceum_yandex_user';
 const YANDEX_SYNC_TIME_KEY = 'lyceum_yandex_last_sync';
 const YANDEX_REMOTE_FILE = 'app:/lyceum_notes.json';
-const WORKER_PROXY_URL = 'https://lyceum-proxy.dimafilippov1800.workers.dev/proxy-url?url=';
 
 // OAuth Client ID from oauth.yandex.ru
 export const DEFAULT_YANDEX_CLIENT_ID = '2954ef8874cf4e239c98b99a2cbedf36';
@@ -150,8 +150,8 @@ class YandexSyncService {
         const meta = await metaRes.json();
         if (meta.href) {
           try {
-            // Proxied through Cloudflare Worker to avoid Yandex downloader CORS 403
-            const proxyDownloadUrl = `${WORKER_PROXY_URL}${encodeURIComponent(meta.href)}`;
+            // Proxied through active CORS proxy to avoid Yandex downloader CORS 403
+            const proxyDownloadUrl = getProxiedUrl(meta.href);
             const downloadRes = await fetch(proxyDownloadUrl);
             if (downloadRes.ok) {
               const data = await downloadRes.json();
@@ -225,7 +225,7 @@ class YandexSyncService {
           if (uploadMetaRes.ok) {
             const uploadMeta = await uploadMetaRes.json();
             if (uploadMeta.href) {
-              const proxyUploadUrl = `${WORKER_PROXY_URL}${encodeURIComponent(uploadMeta.href)}`;
+              const proxyUploadUrl = getProxiedUrl(uploadMeta.href);
               const uploadRes = await fetch(proxyUploadUrl, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },

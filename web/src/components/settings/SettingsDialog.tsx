@@ -528,12 +528,12 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
                   type="text"
                   value={proxyInput}
                   onChange={(e) => setProxyInput(e.target.value)}
-                  placeholder="https://lyceum-proxy.dimafilippov1800.workers.dev"
+                  placeholder="https://functions.yandexcloud.net/..."
                   className="flex-1 px-3 py-1.5 bg-[var(--md-surface)] border border-[var(--md-border)] rounded-xl text-xs outline-none text-[var(--md-text-primary)]"
                 />
                 <button
                   type="button"
-                  onClick={() => setCorsProxy(proxyInput)}
+                  onClick={() => setCorsProxy(proxyInput.trim())}
                   className="px-3 py-1.5 bg-[var(--nika-subject)] text-[var(--md-on-primary)] text-xs font-bold rounded-xl"
                 >
                   ОК

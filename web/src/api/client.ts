@@ -25,15 +25,27 @@ export function getClientConfig(): ClientConfig {
   return currentConfig;
 }
 
-function buildProxyUrl(proxyBase: string, targetUrl: string): string {
+export function buildProxyUrl(proxyBase: string, targetUrl: string): string {
   const cleanBase = proxyBase.trim().replace(/\/+$/, '');
+  const encodedTarget = encodeURIComponent(targetUrl);
+
   if (cleanBase.includes('?url=') || cleanBase.includes('?quest=')) {
-    return `${cleanBase}${encodeURIComponent(targetUrl)}`;
+    return `${cleanBase}${encodedTarget}`;
   }
   if (cleanBase.endsWith('/proxy-url')) {
-    return `${cleanBase}?url=${encodeURIComponent(targetUrl)}`;
+    return `${cleanBase}?url=${encodedTarget}`;
   }
-  return `${cleanBase}/proxy-url?url=${encodeURIComponent(targetUrl)}`;
+  if (cleanBase.includes('workers.dev')) {
+    return `${cleanBase}/proxy-url?url=${encodedTarget}`;
+  }
+  if (cleanBase.includes('?')) {
+    return `${cleanBase}&url=${encodedTarget}`;
+  }
+  return `${cleanBase}?url=${encodedTarget}`;
+}
+
+export function getProxiedUrl(targetUrl: string): string {
+  return buildProxyUrl(currentConfig.corsProxy || DEFAULT_PROXY_BASE, targetUrl);
 }
 
 async function fetchJsonWithTimeout<T>(
