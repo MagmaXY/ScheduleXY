@@ -19,6 +19,7 @@ import { usePreferencesStore } from './store/preferencesStore';
 import { useNotesStore } from './store/notesStore';
 import { yandexSyncService } from './services/yandexSync';
 import { setClientConfig } from './api/client';
+import { notificationService } from './services/notificationService';
 
 export const App: React.FC = () => {
   useFavicon();
@@ -29,6 +30,8 @@ export const App: React.FC = () => {
   const loadSchedule = useScheduleStore((s) => s.loadSchedule);
   const isLoading = useScheduleStore((s) => s.isLoading);
   const loadNotes = useNotesStore((s) => s.loadNotes);
+  const targetType = usePreferencesStore((s) => s.targetType);
+  const targetName = usePreferencesStore((s) => s.targetName);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -114,6 +117,10 @@ export const App: React.FC = () => {
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, []);
+
+  useEffect(() => {
+    notificationService.updateUserTags(targetType, targetName);
+  }, [targetType, targetName]);
 
   // Widget mode has its own stripped down layout
   if (location.pathname === '/widget') {
