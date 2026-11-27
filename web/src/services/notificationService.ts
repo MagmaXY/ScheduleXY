@@ -33,11 +33,17 @@ class NotificationService {
     // Load OneSignal SDK
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async (OneSignal: any) => {
+      const pathDir = window.location.pathname.endsWith('/')
+        ? window.location.pathname
+        : window.location.pathname.replace(/[^/]*$/, '');
+      const baseScope = pathDir || '/';
+      const swPath = `${baseScope.replace(/^\//, '')}OneSignalSDKWorker.js`;
+
       await OneSignal.init({
         appId: activeAppId,
         safari_web_id: DEFAULT_SAFARI_WEB_ID,
-        serviceWorkerParam: { scope: '/ScheduleXY/' },
-        serviceWorkerPath: 'OneSignalSDKWorker.js',
+        serviceWorkerParam: { scope: `${baseScope}push/onesignal/` },
+        serviceWorkerPath: swPath,
         notifyButton: { enable: false },
         allowLocalhostAsSecureOrigin: true,
       });
