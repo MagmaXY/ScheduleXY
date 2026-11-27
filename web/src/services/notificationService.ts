@@ -5,7 +5,7 @@ export const VAPID_PUBLIC_KEY =
   'BMI0E44PnZ_p4Tnh6wlxa-e7F5Wd8Ptb5q-koLwFMaTbkh7hy0vKdM8-2rqzxl2BvrjEdv5MxKWvunRbZqE-hec';
 
 // Yandex Cloud Function URL for saving PushSubscription & checking updates
-export const DEFAULT_PUSH_ENDPOINT = '';
+export const DEFAULT_PUSH_ENDPOINT = 'https://functions.yandexcloud.net/d4e4lvi2g35mnmapfl4r';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
