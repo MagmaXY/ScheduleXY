@@ -52,13 +52,10 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
   const useMagmaLogo = usePreferencesStore((s) => s.useMagmaLogo);
   const setUseMagmaLogo = usePreferencesStore((s) => s.setUseMagmaLogo);
   const isMagmaUnlocked = usePreferencesStore((s) => s.isMagmaUnlocked);
-  const corsProxy = usePreferencesStore((s) => s.corsProxy);
-  const setCorsProxy = usePreferencesStore((s) => s.setCorsProxy);
 
   const exportNotesJson = useNotesStore((s) => s.exportNotesJson);
   const importNotesJson = useNotesStore((s) => s.importNotesJson);
 
-  const [proxyInput, setProxyInput] = useState(corsProxy);
   const [passwordInput, setPasswordInput] = useState(adminPassword);
 
   const [yandexState, setYandexState] = useState<YandexUserState>(() =>
@@ -512,31 +509,6 @@ export const SettingsDialog: React.FC<Props> = ({ onClose }) => {
                       <span>Включить</span>
                     </>
                   )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Network / CORS Proxy */}
-          <div className="pt-2 border-t border-[var(--md-border-light)]">
-            <h4 className="font-bold text-xs text-[var(--md-text-muted)] mb-2">
-              CORS прокси для API
-            </h4>
-            <div className="p-3 rounded-2xl bg-[var(--md-surface-variant)]/50">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={proxyInput}
-                  onChange={(e) => setProxyInput(e.target.value)}
-                  placeholder="https://functions.yandexcloud.net/..."
-                  className="flex-1 px-3 py-1.5 bg-[var(--md-surface)] border border-[var(--md-border)] rounded-xl text-xs outline-none text-[var(--md-text-primary)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setCorsProxy(proxyInput.trim())}
-                  className="px-3 py-1.5 bg-[var(--nika-subject)] text-[var(--md-on-primary)] text-xs font-bold rounded-xl"
-                >
-                  ОК
                 </button>
               </div>
             </div>

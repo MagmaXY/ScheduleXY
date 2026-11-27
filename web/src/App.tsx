@@ -18,7 +18,6 @@ import { useScheduleStore } from './store/scheduleStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useNotesStore } from './store/notesStore';
 import { yandexSyncService } from './services/yandexSync';
-import { setClientConfig } from './api/client';
 import { notificationService } from './services/notificationService';
 
 export const App: React.FC = () => {
@@ -89,7 +88,6 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const initialPrefs = usePreferencesStore.getState();
-    setClientConfig({ corsProxy: initialPrefs.corsProxy });
 
     // Check if returning from Yandex OAuth redirect
     yandexSyncService.handleAuthCallback();

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_PROXY_BASE, setClientConfig } from '../api/client';
 
 export type ThemePreset = 'classic' | 'emerald' | 'dynamic' | 'oled';
 export type TargetType = 'class' | 'teacher';
@@ -23,7 +22,6 @@ interface PreferencesState {
   copyIncludeNotes: boolean;
   useMagmaLogo: boolean;
   isMagmaUnlocked: boolean;
-  corsProxy: string;
   notificationsEnabled: boolean;
 
   // Actions
@@ -47,7 +45,6 @@ interface PreferencesState {
   setCopyIncludeNotes: (val: boolean) => void;
   setUseMagmaLogo: (val: boolean) => void;
   setIsMagmaUnlocked: (val: boolean) => void;
-  setCorsProxy: (proxy: string) => void;
   setNotificationsEnabled: (val: boolean) => void;
   isMiddleSchoolClass: (name?: string | null) => boolean;
 }
@@ -72,7 +69,6 @@ export const usePreferencesStore = create<PreferencesState>()(
       copyIncludeNotes: false,
       useMagmaLogo: false,
       isMagmaUnlocked: false,
-      corsProxy: DEFAULT_PROXY_BASE,
       notificationsEnabled: true,
 
       setTargetType: (type) => set({ targetType: type }),
@@ -109,10 +105,6 @@ export const usePreferencesStore = create<PreferencesState>()(
       setCopyIncludeNotes: (val) => set({ copyIncludeNotes: val }),
       setUseMagmaLogo: (val) => set({ useMagmaLogo: val }),
       setIsMagmaUnlocked: (val) => set({ isMagmaUnlocked: val }),
-      setCorsProxy: (proxy) => {
-        setClientConfig({ corsProxy: proxy });
-        set({ corsProxy: proxy });
-      },
       setNotificationsEnabled: (val) => set({ notificationsEnabled: val }),
 
       isMiddleSchoolClass: (name) => {
@@ -122,15 +114,6 @@ export const usePreferencesStore = create<PreferencesState>()(
     }),
     {
       name: 'schedulexy-preferences',
-      onRehydrateStorage: () => (state) => {
-        if (!state) return;
-        const stored = (state.corsProxy || '').trim();
-        if (!stored || stored.includes('workers.dev')) {
-          state.setCorsProxy(DEFAULT_PROXY_BASE);
-        } else {
-          setClientConfig({ corsProxy: stored });
-        }
-      },
     }
   )
 );

@@ -5,25 +5,7 @@
 // Yandex Cloud Function CORS proxy for Lyceum NSTU & Yandex Disk
 export const DEFAULT_PROXY_BASE = 'https://functions.yandexcloud.net/d4e6qhlgsplrt7r7iumt';
 
-export interface ClientConfig {
-  corsProxy: string;
-  timeoutMs: number;
-}
-
-export const defaultClientConfig: ClientConfig = {
-  corsProxy: '', // Empty means use default proxy
-  timeoutMs: 12000,
-};
-
-let currentConfig = { ...defaultClientConfig };
-
-export function setClientConfig(newConfig: Partial<ClientConfig>) {
-  currentConfig = { ...currentConfig, ...newConfig };
-}
-
-export function getClientConfig(): ClientConfig {
-  return currentConfig;
-}
+const REQUEST_TIMEOUT_MS = 12000;
 
 export function buildProxyUrl(proxyBase: string, targetUrl: string): string {
   const cleanBase = proxyBase.trim().replace(/\/+$/, '');
@@ -45,7 +27,7 @@ export function buildProxyUrl(proxyBase: string, targetUrl: string): string {
 }
 
 export function getProxiedUrl(targetUrl: string): string {
-  return buildProxyUrl(currentConfig.corsProxy || DEFAULT_PROXY_BASE, targetUrl);
+  return buildProxyUrl(DEFAULT_PROXY_BASE, targetUrl);
 }
 
 async function fetchJsonWithTimeout<T>(
@@ -103,21 +85,18 @@ export async function fetchWithProxy<T>(
       return await fetchJsonWithTimeout<T>(
         `/api-lyceum/${cleanEndpoint}`,
         options,
-        currentConfig.timeoutMs
+        REQUEST_TIMEOUT_MS
       );
     } catch {
       // Fallback to remote proxy/direct (e.g. during vite preview where dev proxy is inactive)
     }
   }
 
-  // 2. Race direct Lyceum API against configured CORS proxy:
+  // 2. Race direct Lyceum API against Yandex Cloud CORS proxy:
   // - If CORS is allowed/disabled (WebView/desktop/extension), direct wins in ~70-300ms
   // - Otherwise direct fails CORS in ~100ms and Promise.any keeps waiting on the proxy
   const targetLyceumUrl = `https://lyceum.nstu.ru/info/api/${cleanEndpoint}`;
-  const proxyUrl = buildProxyUrl(
-    currentConfig.corsProxy || DEFAULT_PROXY_BASE,
-    targetLyceumUrl
-  );
+  const proxyUrl = getProxiedUrl(targetLyceumUrl);
 
   const raceController = new AbortController();
   try {
@@ -125,13 +104,13 @@ export async function fetchWithProxy<T>(
       fetchJsonWithTimeout<T>(
         targetLyceumUrl,
         options,
-        currentConfig.timeoutMs,
+        REQUEST_TIMEOUT_MS,
         raceController.signal
       ),
       fetchJsonWithTimeout<T>(
         proxyUrl,
         options,
-        currentConfig.timeoutMs,
+        REQUEST_TIMEOUT_MS,
         raceController.signal
       ),
     ]);
